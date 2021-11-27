@@ -3,7 +3,7 @@ program advection
 
   use planet_module, only: planet_init
   use grid_module, only: grid_init, grid_clean
-  use time_module, only: time_init, model
+  use time_module, only: model
   use euler_module, only: eulerian_init, eulerian_timeint, eulerian_clean
   use semilag_module, only: semilag_init, semilag_timeint, semilag_clean
   use nisl_module, only: nisl_init, nisl_timeint, nisl_clean
@@ -14,7 +14,6 @@ program advection
   call planet_init()
   call grid_init()
   call field_init()
-  call time_init()
   select case(model)
     case("euler ")
       call eulerian_init()

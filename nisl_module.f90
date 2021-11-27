@@ -88,7 +88,7 @@ contains
   end subroutine nisl_timeint
 
   subroutine update(dt)
-    use time_module, only: etf, imethod
+    use time_module, only: imethod
     use uv_module, only: uv_nodiv, uv_div
     use upstream_module, only: find_points
     use legendre_transform_module, only: legendre_analysis, legendre_synthesis, &
@@ -143,8 +143,7 @@ contains
 ! time filter
     call legendre_analysis(gphi, sphi1)
     do m=0, ntrunc
-      sphi_old(m:ntrunc,m) = sphi(m:ntrunc,m) + &
-        etf * (sphi_old(m:ntrunc,m)-2.0d0*sphi(m:ntrunc,m)+sphi1(m:ntrunc,m))
+      sphi_old(m:ntrunc,m) = sphi(m:ntrunc,m)       
       sphi(m:ntrunc,m) = sphi1(m:ntrunc,m)
     end do
 

@@ -5,13 +5,8 @@ module semilag_module
   private
   
   integer(8), private :: nsave = 0!, n = 3
-  real(8), dimension(2) :: minmax = 0.0d0
   real(8), dimension(:,:), allocatable, private :: &
-    gphi_old, gphix, gphiy, gphixy, midlon, midlat, deplon, deplat, &
-    gmax, gmin, w
-
-  logical, private :: &
-    spectral = .true., fmono = .false., clip = .false., conserve = .false.
+    gphi_old, gphix, gphiy, gphixy, midlon, midlat, deplon, deplat
 
   private :: update
   public :: semilag_init, semilag_timeint, semilag_clean
@@ -47,19 +42,6 @@ contains
       midlat(:,j) = latitudes(j)
     end do
 
-    if (fmono.or.clip) then
-      minmax(1) = minval(gphi)
-      minmax(2) = maxval(gphi)
-    end if
-    if (conserve) then
-      allocate(gmax(nlon,nlat),gmin(nlon,nlat),w(nlon,nlat))
-      do j=1, nlat
-        w(:,j) = wgt(j)
-      end do
-      gmin(:,:) = minval(gphi)
-      gmax(:,:) = maxval(gphi)
-    end if
-
   end subroutine semilag_init
 
   subroutine semilag_clean()
@@ -72,7 +54,7 @@ contains
   end subroutine semilag_clean
 
   subroutine semilag_timeint()
-    use time_module, only: nstep, hstep, deltat
+    use time_module, only: nstep, deltat
     use legendre_transform_module, only: legendre_synthesis
     implicit none
 
@@ -81,13 +63,6 @@ contains
     do i=1, nstep
       print *, "step=", i, " t=", real(i*deltat)
       call update(deltat)
-      if (mod(i,hstep)==0) then
-        print *, "Saving step=", i
-        if (spectral) then
-          call legendre_synthesis(sphi, gphi)
-        end if
-        nsave = nsave + 1
-      end if
     end do
 
   end subroutine semilag_timeint
@@ -96,7 +71,7 @@ contains
     use math_module, only: &
       pi=>math_pi, pir=>math_pir, pih=>math_pih
     use upstream_module, only: find_points
-    use time_module, only: kappa, imethod
+    use time_module, only: imethod
     use uv_module, only: uv_sbody, uv_nodiv, uv_div
     use interpolate_module, only: &
       interpolate_set, interpolate_setd, interpolate_setdx, &
@@ -109,15 +84,13 @@ contains
     real(8), intent(in) :: dt
 
     integer(8) :: i, j, m, n
-    real(8) :: eps, dlonr, knt
+    real(8) :: eps, dlonr
     real(8), dimension(nlon) :: gphitmp
 
     call uv_sbody(lon,latitudes,gu,gv)
     call find_points(gu, gv, 0.5d0*dt, midlon, midlat, deplon, deplat)
 
-    if (spectral) then
-      call legendre_synthesis(sphi_old,gphi_old)
-    end if
+    call legendre_synthesis(sphi_old,gphi_old)
 
     if ((imethod=="sph   ").or.(imethod=="fdy   ").or.(imethod=="spcher")) then
       call legendre_analysis(gphi_old,sphi_old)
@@ -174,48 +147,29 @@ contains
         (imethod=="fdy   ")) then
       call interpolate_setd(gphix, gphiy, gphixy)
     end if
-    if (fmono.or.clip) then
-      minmax(1) = min(minmax(1),minval(gphi))
-      minmax(2) = max(minmax(2),maxval(gphi))
-    end if
-    if (conserve) then
-      gmin(:,:) = min(minmax(1),minval(gphi))
-      gmax(:,:) = max(minmax(2),maxval(gphi))
-    end if
-    if (fmono) then
-      call interpolate_diff()
-    end if
     do j=1, nlat
       do i=1, nlon
         select case (imethod)
           case ("bilin ") ! monotonicity is guranteed
             call interpolate_bilinear(deplon(i,j), deplat(i,j), gphi(i,j))
           case ("fd    ", "sph   ", "fdy   ")
-            call interpolate_bicubic(deplon(i,j), deplat(i,j), gphi(i,j), &
-              monotonic=fmono, minmax=minmax)
+            call interpolate_bicubic(deplon(i,j), deplat(i,j), gphi(i,j))
           case ("polin2")
             call interpolate_polin2(deplon(i,j), deplat(i,j), gphi(i,j))
           case ("linpol")
-            call interpolate_linpol(deplon(i,j), deplat(i,j), gphi(i,j), &
-              monotonic=fmono, minmax=minmax)
+            call interpolate_linpol(deplon(i,j), deplat(i,j), gphi(i,j))
         end select
       end do
     end do
 
 
 ! spectral
-    if (spectral) then
-      call legendre_analysis(gphi,sphi)
-      do n=1, ntrunc
-        knt = kappa*dt*(n*(n+1.0d0))**2
-        do m=0, n
-          sphi_old(n,m) = (1.0d0-knt)*sphi(n,m)
-        end do
+    call legendre_analysis(gphi,sphi)
+    do n=1, ntrunc
+      do m=0, n
+        sphi_old(n,m) = sphi(n,m)
       end do
-    else
-! grid
-      gphi_old(:,:) = gphi(:,:)
-    end if
+    end do
 
   end subroutine update
 

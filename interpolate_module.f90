@@ -129,14 +129,12 @@ module interpolate_module
   
     end subroutine interpolate_bilinearuv
   
-    subroutine interpolate_bicubic(lon, lat, fi, monotonic, minmax)
+    subroutine interpolate_bicubic(lon, lat, fi)
       use bicubic_module, only: bcucof, bcuint, bcuintp
       implicit none
   
       real(8), intent(in) :: lon, lat
       real(8), intent(out) :: fi
-      logical, optional, intent(in) :: monotonic
-      real(8), optional, dimension(2), intent(in) :: minmax
   
       real(8), dimension(4) :: z, zx, zy, zxy
       integer(8) :: k
@@ -152,20 +150,8 @@ module interpolate_module
       end do
   
       call bcucof(z,zx,zy,zxy,dlon,dlat)
-  !    if (abs(lat)<latf(1)) then
-        fi = bcuint(t,u)
-  !    else
-  !      fi = bcuintp(t,u)
-  !    end if
+      fi = bcuint(t,u)
   
-      if (present(monotonic).and.(monotonic)) then
-  !      call quasimonotone_filter_bicubic(fi,is(1),js(1))
-        call quasimonotone_filter(fi,is(1),js(1))
-      end if
-      if (present(minmax).and.(minmax(1)/=minmax(2))) then
-  ! Ostiguy and Laprise 1990
-        fi = max(minmax(1),min(minmax(2),fi))
-      end if
      
     end subroutine interpolate_bicubic
   
@@ -225,14 +211,12 @@ module interpolate_module
   
     end subroutine interpolate_polin2uv
   
-    subroutine interpolate_linpol(lon, lat, fi, monotonic, minmax)
+    subroutine interpolate_linpol(lon, lat, fi)
       use polint_module, only : polint
       implicit none
   
       real(8), intent(in) :: lon, lat
       real(8), intent(out) :: fi
-      logical, optional, intent(in) :: monotonic
-      real(8), optional, dimension(2), intent(in) :: minmax
   
       integer(8) :: i0, i1, i2, j0, j1, j2, j
       real(8) :: dfi
@@ -255,14 +239,6 @@ module interpolate_module
         ytmp(j-j1+1) =  (1.0d0-t)*ff(i0,j)+t*ff(i0+1,j)
       end do
       call polint(latf(j1:j2), ytmp, lat, fi, dfi)
-  
-      if (present(monotonic).and.(monotonic)) then
-        call quasimonotone_filter(fi,is(1),js(1))
-      end if
-      if (present(minmax).and.(minmax(1)/=minmax(2))) then
-  ! Ostiguy and Laprise 1990
-        fi = max(minmax(1),min(minmax(2),fi))
-      end if
   
     end subroutine interpolate_linpol
   
