@@ -2,6 +2,7 @@ module nisl_module
 
   use grid_module, only: nlon, nlat, ntrunc, &
     gu, gv, gphi, sphi_old, sphi, longitudes=>lon, latitudes=>lat, coslatr
+  use field_module, only : X, Y
   private
   
   integer(8), private :: nsave = 0
@@ -70,13 +71,19 @@ contains
     use legendre_transform_module, only: legendre_synthesis
     implicit none
 
-    integer(8) :: i
+    integer(8) :: i, j
 
     do i=2, nstep
       print *, "step=", i, " t=", real(i*deltat)
       call update(2.0d0*deltat)
       write(*, *) "maxval = ", maxval(gphi)
     end do
+    open(10, file="log.txt")
+    do i = 1, nlon
+      do j = 1, nlat
+        write(10,*) X(i, j), Y(i, j), gphi(i, j)
+      enddo
+    enddo
 
   end subroutine nisl_timeint
 
