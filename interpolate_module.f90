@@ -5,16 +5,6 @@ module interpolate_module
     implicit none
     private
   
-  ! References:
-  !   - Ritchie (1987) describes selection of points across the pole
-  !   - Interpolation schemes from Numerical Recipes
-  ! Author: T. Enomoto
-  ! History: 
-  ! 2007-11-20 higher order Lagrange interpolation
-  ! 2007-11-14 simplified stencil finding
-  ! 2004-09-10 some simplification
-  ! 2004-03
-  
     integer(8), private :: nx, ny, n=3, nh, nhalo, nx1, nx2, ny1, ny2 
     integer(8), dimension(4), private :: is, js
     real(8), private :: u, t, dlon
@@ -93,11 +83,7 @@ module interpolate_module
   ! However, not so sensitive to t or 1-t at points 3 and 4,
   ! even slightly worse.  Leave it simple.
   
-  !    if (abs(lat)<latf(1)) then
-        fi = (1.0d0-u)*((1.0d0-t)*fs(1)+t*fs(2)) + u*(t*fs(3)+(1.0d0-t)*fs(4))
-  !    else
-  !       fi = (1.0d0-u)*((1.0d0-t)*fs(1)+t*fs(2)) + u*(t*fs(4)+(1.0d0-t)*fs(3))
-  !    end if
+      fi = (1.0d0-u)*((1.0d0-t)*fs(1)+t*fs(2)) + u*(t*fs(3)+(1.0d0-t)*fs(4))
   
     end subroutine interpolate_bilinear
   
@@ -107,7 +93,6 @@ module interpolate_module
       real(8), intent(in) :: lon, lat
       real(8), intent(out) :: fiu, fiv
   
-      !real(8) :: coslatr
       real(8), dimension(4) :: fsu, fsv
       integer(8) :: k
   
@@ -116,16 +101,8 @@ module interpolate_module
         fsu(k) = fu(is(k),js(k))
         fsv(k) = fv(is(k),js(k))
       end do
-  !    if (abs(lat)<latf(1)) then
-        fiu = (1.0d0-u)*((1.0d0-t)*fsu(1)+t*fsu(2)) + u*(t*fsu(3)+(1.0d0-t)*fsu(4))
-        fiv = (1.0d0-u)*((1.0d0-t)*fsv(1)+t*fsv(2)) + u*(t*fsv(3)+(1.0d0-t)*fsv(4))
-  !      coslatr = 1.0d0/cos(lat)
-  !      fiu = fiu*coslatr
-  !      fiv = fiv*coslatr
-  !    else
-  !      fiu = (1.0d0-u)*((1.0d0-t)*fsu(1)+t*fsu(2)) + u*(t*fsu(4)+(1.0d0-t)*fsu(3))
-  !      fiv = (1.0d0-u)*((1.0d0-t)*fsv(1)+t*fsv(2)) + u*(t*fsv(4)+(1.0d0-t)*fsv(3))
-  !    end if
+      fiu = (1.0d0-u)*((1.0d0-t)*fsu(1)+t*fsu(2)) + u*(t*fsu(3)+(1.0d0-t)*fsu(4))
+      fiv = (1.0d0-u)*((1.0d0-t)*fsv(1)+t*fsv(2)) + u*(t*fsv(3)+(1.0d0-t)*fsv(4))
   
     end subroutine interpolate_bilinearuv
   
