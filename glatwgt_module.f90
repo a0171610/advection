@@ -37,8 +37,8 @@ module glatwgt_module
   
       real(8), dimension(:), intent(inout) :: glat, gwgt
   
-      integer(8) :: l, j, jj=1, jMax
-      real(8) :: guess, pn, dpn, pn_max=0.0d0, s
+      integer(8) :: l, j, jMax
+      real(8) :: guess, dpn, s
   
       jMax = size(glat)
       jMid = jMax/2
@@ -58,18 +58,6 @@ module glatwgt_module
         gwgt(j) = (2.0d0*jMax + 1.0d0)/(dpn)**2
       end do
   
-  ! ***** debug
-  ! print *, "j, lat, pn, w"
-  ! do j=1, jMid
-  !   call legendre_P(glat(j), pn)
-  !   print *, j, (pi/2-glat(j))*180/pi, pn, gwgt(j)
-  !   pn = abs(pn)
-  !   if (pn>pn_max) then
-  !     pn_max = pn
-  !     jj = j
-  !   end if
-  ! end do
-  ! print *, "Largest error:", pn_max, " at", jj
     s = sum(gwgt(1:jMid))
     print *, "sum of weights:", s, " error=", abs(1.0d0 - s)
   ! *****
