@@ -7,6 +7,7 @@ module euler_module
   use legendre_transform_module, only: &
     legendre_analysis, legendre_synthesis, &
     legendre_synthesis_dlon, legendre_synthesis_dlat
+  use field_module, only : X, Y
   implicit none
   private
 
@@ -38,13 +39,18 @@ contains
   subroutine eulerian_timeint()
     implicit none
 
-    integer(8) :: i
+    integer(8) :: i, j
 
     do i=2, nstep
-      print *, "step=", i, " t=", real(i*deltat)
       call update(2.0d0*deltat)
-      write(*, *) 'maxval = ', maxval(gphi)
+      write(*, *) "step=", i, "maxval = ", maxval(gphi)
     end do
+    open(10, file="log.txt")
+    do i = 1, nlon
+      do j = 1, nlat
+        write(10,*) X(i, j), Y(i, j), gphi(i, j)
+      enddo
+    enddo
 
   end subroutine eulerian_timeint
 

@@ -59,7 +59,6 @@ module glatwgt_module
       end do
   
     s = sum(gwgt(1:jMid))
-    print *, "sum of weights:", s, " error=", abs(1.0d0 - s)
   ! *****
   
       gwgt(jMax:jMid+1:-1) = gwgt(1:jMid)

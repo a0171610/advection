@@ -12,7 +12,7 @@ module interpolate_module
     real(8), dimension(:,:), allocatable, private :: &
       ff, ffx, ffy, ffxy, fu, fv, ffxl, ffyl
   
-    private :: find_stencil, quasimonotone_filter
+    private :: find_stencil
     public :: interpolate_init, interpolate_clean, &
               interpolate_set, interpolate_setuv, &
               interpolate_setd, interpolate_setdx, &
@@ -358,42 +358,5 @@ module interpolate_module
       u = (lat-latf(j))/(latf(j+1)-latf(j))
   
     end subroutine find_stencil
-  
-    subroutine quasimonotone_filter(fi,i0,j0)
-      implicit none
-  
-      real(8), intent(inout) :: fi
-      integer(8), intent(in) :: i0, j0
-      logical :: lmono
-  
-  ! apply filter to a cell that should be monotonic
-      lmono = .false.
-      if (nhalo>=2) then
-        lmono = .not. ( &! Nair et al. 1999
-          ((ffxl(i0-2,j0)  *ffxl(i0-1,j0)  >0.0d0).and. &
-           (ffxl(i0-1,j0)  *ffxl(i0+1,j0)  <0.0d0).and. &
-           (ffxl(i0+1,j0)  *ffxl(i0+2,j0)  >0.0d0)).or. &
-          ((ffxl(i0-2,j0+1)*ffxl(i0-1,j0+1)>0.0d0).and. &
-           (ffxl(i0-1,j0+1)*ffxl(i0+1,j0+1)<0.0d0).and. &
-           (ffxl(i0+1,j0+1)*ffxl(i0+2,j0+1)>0.0d0)).or. &
-          ((ffyl(i0,  j0-2)*ffyl(i0,  j0-1)>0.0d0).and. &
-           (ffyl(i0,  j0-1)*ffyl(i0,  j0+1)<0.0d0).and. &
-           (ffyl(i0,  j0+1)*ffyl(i0,  j0+2)>0.0d0)).or. &
-          ((ffyl(i0+1,j0-2)*ffyl(i0+1,j0-1)>0.0d0).and. &
-           (ffyl(i0+1,j0-1)*ffyl(i0+1,j0+1)<0.0d0).and. &
-           (ffyl(i0+1,j0+1)*ffyl(i0+1,j0+2)>0.0d0)) )
-      else
-        lmono = & ! Sun et al. 1996
-          (ffxl(i0-1,j0)*ffxl(i0+1,j0)>=0.0d0).and. &
-          (ffxl(i0-1,j0+1)*ffxl(i0+1,j0+1)>=0.0d0).and. &
-          (ffyl(i0,j0-1)*ffyl(i0,j0+1)>=0.0d0).and. &
-          (ffyl(i0+1,j0-1)*ffyl(i0+1,j0+1)>=0.0d0)
-      end if
-      if (lmono) then
-  ! Bermejo and Staniforth 1992
-        fi = max(min(fi,maxval(ff(i0:i0+1,j0:j0+1))),minval(ff(i0:i0+1,j0:j0+1)))
-      end if
-  
-    end subroutine quasimonotone_filter
   
   end module interpolate_module

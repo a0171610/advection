@@ -5,7 +5,6 @@ module nisl_module
   use field_module, only : X, Y
   private
   
-  integer(8), private :: nsave = 0
   integer(8), allocatable, private :: p(:,:), q(:,:)
   real(8), dimension(:,:), allocatable, private :: &
     gphi_old, dgphi, dgphim, gphim, &
@@ -19,7 +18,6 @@ contains
 
   subroutine nisl_init()
     use time_module, only: deltat
-    use planet_module, only: a=>planet_radius
     use interpolate_module, only: interpolate_init
     use legendre_transform_module, only: legendre_synthesis
     implicit none
@@ -33,14 +31,8 @@ contains
              gum(nlon,nlat),gvm(nlon,nlat))
     call interpolate_init(gphi)
 
-    print *, "Saving initial value"
     call legendre_synthesis(sphi_old,gphi_old)
     gphi = gphi_old
-    print *, "step=0 t=0"
-    print *, "Saving step=0"
-    print *, "umax=", real(maxval(gu)*a), " umin=", real(minval(gu)*a)
-    print *, "vmax=", real(maxval(gv)*a), " vmin=", real(minval(gv)*a)
-    nsave = 1
 
     do i=1, nlon
       midlon(i,:) = longitudes(i)
@@ -74,10 +66,10 @@ contains
     integer(8) :: i, j
 
     do i=2, nstep
-      print *, "step=", i, " t=", real(i*deltat)
       call update(2.0d0*deltat)
-      write(*, *) "maxval = ", maxval(gphi)
+      write(*, *) 'step = ', i, "maxval = ", maxval(gphi)
     end do
+    
     open(10, file="log.txt")
     do i = 1, nlon
       do j = 1, nlat

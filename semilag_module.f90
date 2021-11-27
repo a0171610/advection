@@ -2,9 +2,9 @@ module semilag_module
 
   use grid_module, only: nlon, nlat, ntrunc, &
     gu, gv, gphi, sphi_old, sphi, latitudes=>lat, lon, coslatr, wgt
+  use field_module, only : X, Y
   private
   
-  integer(8), private :: nsave = 0!, n = 3
   real(8), dimension(:,:), allocatable, private :: &
     gphi_old, gphix, gphiy, gphixy, midlon, midlat, deplon, deplat
 
@@ -14,7 +14,6 @@ module semilag_module
 contains
 
   subroutine semilag_init()
-    use planet_module, only: a=>planet_radius
     use interpolate_module, only: interpolate_init
     use legendre_transform_module, only: legendre_synthesis
     implicit none
@@ -25,15 +24,7 @@ contains
              midlon(nlon,nlat),midlat(nlon,nlat),deplon(nlon,nlat),deplat(nlon,nlat))
     call interpolate_init(gphi)
 
-    print *, "Saving initial value"
-!    call legendre_synthesis(sphi_old,gphi_old)
-!    gphi = gphi_old
     gphi_old(:,:) = gphi(:,:)
-    print *, "umax=", real(maxval(gu)*a), " umin=", real(minval(gu)*a)
-    print *, "vmax=", real(maxval(gv)*a), " vmin=", real(minval(gv)*a)
-    print *, "step=0 t=0"
-    print *, "Saving step=0"
-    nsave = 1
 
     do i=1, nlon
       midlon(i,:) = lon(i)
@@ -58,12 +49,18 @@ contains
     use legendre_transform_module, only: legendre_synthesis
     implicit none
 
-    integer(8) :: i
+    integer(8) :: i, j
 
     do i=1, nstep
-      print *, "step=", i, " t=", real(i*deltat)
       call update(deltat)
+      write(*, *) "step=", i, "maxval = ", maxval(gphi)
     end do
+    open(10, file="log.txt")
+    do i = 1, nlon
+      do j = 1, nlat
+        write(10,*) X(i, j), Y(i, j), gphi(i, j)
+      enddo
+    enddo
 
   end subroutine semilag_timeint
 

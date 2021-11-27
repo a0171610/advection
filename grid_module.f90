@@ -45,17 +45,9 @@ contains
         sphi_old(n,m) = sphi(n,m)
       end do
     end do
-    print *, "first few elements of sphi"
-    do m=0, 5
-      do n=m, 5
-        print *, m, n, sphi(n, m)
-      end do
-    end do
 
     call uv_sbody(lon,lat,gu,gv)
       
-    print *, "Umax=", real(maxval(gu)*a), " Umin=", real(minval(gu)*a)
-    print *, "Vmax=", real(maxval(gv)*a), " Vmin=", real(minval(gv)*a)
 
   end subroutine grid_init
 

@@ -20,7 +20,6 @@ contains
     integer(8), intent(in) :: nx, ny, nt
     real(8), dimension(:), intent(inout) :: lat, wgt
 
-    integer(8) :: j, n, m
     real(8), dimension(:,:), allocatable :: g
 
     nlon = nx
@@ -30,17 +29,7 @@ contains
     call glatwgt_calc(glat,gwgt)
     lat(:) = asin(glat(:))
     wgt(:) = gwgt(:)
-    print *, "gaussian latitudes and weights"
-    do j=1, nlat/2
-      print *, j, lat(j), gwgt(j)
-    end do
     call alf_calc(lat, ntrunc+1)
-    print *, "first few elements of Pnm"
-    do m=0, 5
-      do n=m, 5
-        print *, m, n, pnm(nlat/4,n,m)
-      end do
-    end do
 
     allocate(g(nlon,nlat), w(0:nlon/2,nlat))
     call fft_init(g, w)
