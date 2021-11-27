@@ -89,16 +89,16 @@ contains
 
     call legendre_synthesis(sphi_old,gphi_old)
 
-    if ((imethod=="sph   ").or.(imethod=="fdy   ").or.(imethod=="spcher")) then
+    if ((imethod=="sph").or.(imethod=="fdy")) then
       call legendre_analysis(gphi_old,sphi_old)
     end if
 
 ! calculate spectral derivatives
 
-    if ((imethod=="sph   ").or.(imethod=="fdy   ").or.(imethod=="spcher")) then
+    if ((imethod=="sph").or.(imethod=="fdy")) then
       call legendre_synthesis_dlon(sphi_old,gphix)
     end if
-    if (imethod=="sph   ") then
+    if (imethod=="sph") then
       call legendre_synthesis_dlat(sphi_old,gphiy)
       call legendre_synthesis_dlonlat(sphi_old,gphixy)
       do j=1, nlat
@@ -109,7 +109,7 @@ contains
 
 ! calculate fd derivatives
 
-    if (imethod=="fd    ") then
+    if (imethod=="fd") then
 ! d/dlon
       dlonr = 0.25d0*nlon*pir
       gphix(1,:) = dlonr * (gphi_old(2,:) - gphi_old(nlon,:))
@@ -118,7 +118,7 @@ contains
         gphix(i,:) = dlonr*(gphi_old(i+1,:) - gphi_old(i-1,:))
       end do
     end if
-    if ((imethod=="fd    ").or.(imethod=="fdy   ")) then
+    if ((imethod=="fd").or.(imethod=="fdy")) then
 ! d/dphi
       eps = pih-latitudes(1)
       gphitmp = cshift(gphi_old(:,1),nlon/2)
