@@ -7,7 +7,7 @@ module nisl_module
   
   integer(8), allocatable, private :: p(:,:), q(:,:)
   real(8), dimension(:,:), allocatable, private :: &
-    gphi_old, dgphi, dgphim, gphim, &
+    gphi_old, dgphi, dgphim, gphim, gphi_initial, &
     midlon, midlat, deplon, deplat, gum, gvm
   complex(8), dimension(:,:), allocatable, private :: sphi1
 
@@ -26,13 +26,14 @@ contains
 
     allocate(sphi1(0:ntrunc,0:ntrunc),gphi_old(nlon,nlat), &
              gphim(nlon,nlat),dgphi(nlon,nlat),dgphim(nlon,nlat), &
-             midlon(nlon,nlat),midlat(nlon,nlat), &
+             midlon(nlon,nlat),midlat(nlon,nlat), gphi_initial(nlon, nlat), &
              deplon(nlon,nlat),deplat(nlon,nlat), p(nlon,nlat), q(nlon,nlat), &
              gum(nlon,nlat),gvm(nlon,nlat))
     call interpolate_init(gphi)
 
     call legendre_synthesis(sphi_old,gphi_old)
     gphi = gphi_old
+    gphi_initial(:, :) = gphi(:, :)
 
     do i=1, nlon
       midlon(i,:) = longitudes(i)
@@ -41,8 +42,13 @@ contains
       midlat(:,j) = latitudes(j)
     end do
 
-!    print *, "step=1/2", " t=", real(0.5d0*deltat)
-!    call update(0.25d0*deltat,0.5d0*deltat)
+    open(11, file="animation.txt")
+    do i = 1, nlon
+      do j = 1, nlat
+          write(11,*) X(i, j), Y(i, j), gphi(i, j)
+      end do        
+    end do
+    call update(0.25d0*deltat)
     print *, "step=1", " t=", real(deltat)
     call update(deltat)
 
@@ -59,16 +65,24 @@ contains
   end subroutine nisl_clean
 
   subroutine nisl_timeint()
-    use time_module, only: nstep, deltat
+    use time_module, only: nstep, deltat, hstep
     use legendre_transform_module, only: legendre_synthesis
     implicit none
 
-    integer(8) :: i, j
+    integer(8) :: i, j, k
 
     do i=2, nstep
       call update(2.0d0*deltat)
-      write(*, *) 'step = ', i, "maxval = ", maxval(gphi)
+      write(*, *) 'step = ', i, "maxval = ", maxval(gphi), 'minval = ', minval(gphi)
+      if ( mod(i, hstep) == 0 ) then
+        do j = 1, nlon
+            do k = 1, nlat
+              write(11,*) X(j, k), Y(j, k), gphi(j, k)
+            end do
+        end do
+      endif
     end do
+    close(11)
     
     open(10, file="log.txt")
     do i = 1, nlon
@@ -76,7 +90,15 @@ contains
         write(10,*) X(i, j), Y(i, j), gphi(i, j)
       enddo
     enddo
+    close(10)
 
+    open(12, file="error.txt")
+    do j = 1, nlon
+        do k = 1, nlat
+          write(12,*) X(j, k), Y(j, k), gphi_initial(j, k) - gphi(j, k)
+        end do
+    end do
+    close(12)
   end subroutine nisl_timeint
 
   subroutine update(dt)
