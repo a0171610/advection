@@ -6,7 +6,7 @@ module semilag_module
   private
   
   real(8), dimension(:,:), allocatable, private :: &
-    gphi_old, gphix, gphiy, gphixy, midlon, midlat, deplon, deplat
+    gphi_old, gphix, gphiy, gphixy, midlon, midlat, deplon, deplat, gphi_initial
 
   private :: update
   public :: semilag_init, semilag_timeint, semilag_clean
@@ -21,16 +21,23 @@ contains
     integer(8) :: i,j
 
     allocate(gphi_old(nlon,nlat), gphix(nlon,nlat),gphiy(nlon,nlat),gphixy(nlon,nlat), &
-             midlon(nlon,nlat),midlat(nlon,nlat),deplon(nlon,nlat),deplat(nlon,nlat))
+             midlon(nlon,nlat),midlat(nlon,nlat),deplon(nlon,nlat),deplat(nlon,nlat), gphi_initial(nlon, nlat))
     call interpolate_init(gphi)
 
     gphi_old(:,:) = gphi(:,:)
+    gphi_initial(:, :) = gphi(:, :)
 
     do i=1, nlon
       midlon(i,:) = lon(i)
     end do
     do j=1, nlat
       midlat(:,j) = latitudes(j)
+    end do
+    open(11, file="animation.txt")
+    do i = 1, nlon
+      do j = 1, nlat
+          write(11,*) X(i, j), Y(i, j), gphi(i, j)
+      end do        
     end do
 
   end subroutine semilag_init
@@ -45,22 +52,37 @@ contains
   end subroutine semilag_clean
 
   subroutine semilag_timeint()
-    use time_module, only: nstep, deltat
+    use time_module, only: nstep, deltat, hstep
     use legendre_transform_module, only: legendre_synthesis
     implicit none
 
-    integer(8) :: i, j
+    integer(8) :: i, j, k
 
     do i=1, nstep
       call update(deltat)
-      write(*, *) "step=", i, "maxval = ", maxval(gphi)
+      write(*, *) "step=", i, "maxval = ", maxval(gphi), 'minval = ', minval(gphi)
+      if ( mod(i, hstep) == 0 ) then
+        do j = 1, nlon
+            do k = 1, nlat
+                write(11,*) X(j, k), Y(j, k), gphi(j, k)
+            end do
+        end do
+      endif
     end do
+    close(11)
     open(10, file="log.txt")
     do i = 1, nlon
       do j = 1, nlat
         write(10,*) X(i, j), Y(i, j), gphi(i, j)
       enddo
     enddo
+    close(10)
+    open(12, file="error.txt")
+    do i = 1, nlon
+        do j = 1, nlat
+            write(12,*) X(i, j), Y(i, j), gphi_initial(i, j) - gphi(i, j)
+        end do
+    end do
 
   end subroutine semilag_timeint
 
