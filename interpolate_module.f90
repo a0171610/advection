@@ -9,8 +9,7 @@ module interpolate_module
     integer(8), dimension(4), private :: is, js
     real(8), private :: u, t, dlon                            ! tとuは線分比
     real(8), dimension(:), allocatable, private :: lon_extend, lat_extend
-    real(8), dimension(:,:), allocatable, private :: &
-      ff, ffx, ffy, ffxy, fu, fv, ffxl, ffyl
+    real(8), dimension(:,:), allocatable, private :: ff, ffx, ffy, ffxy, fu, fv, ffxl, ffyl
   
     private :: find_stencil
     public :: interpolate_init, interpolate_clean, &

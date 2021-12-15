@@ -2,7 +2,7 @@ module uv_module
   implicit none
   private
 
-  public :: uv_sbody, uv_nodiv, uv_div
+  public :: uv_sbody, uv_nodiv, uv_div, uv_sbody_calc
 
 contains
 
@@ -14,8 +14,7 @@ contains
     real(8), dimension(:), intent(in) :: lon, lat
     real(8), dimension(:,:), intent(inout) :: gu, gv
 
-    real(8), parameter :: &
-      x0 = 0.0d0, y0 = 45.0d0, period = 20.0d0 ! Rotation
+    real(8), parameter :: x0 = 0.0d0, y0 = 45.0d0, period = 20.0d0 ! Rotation
 
     real(8) :: lon0, lat0, omg
     integer(8) :: i, j, nx, ny
@@ -34,6 +33,26 @@ contains
     end do
 
   end subroutine uv_sbody
+
+  subroutine uv_sbody_calc(lon, lat, u, v)
+    use planet_module, only: d=>day_in_sec
+    use math_module, only: pi2=>math_pi2, deg2rad=>math_deg2rad
+    implicit none
+    real(8), intent(in) :: lon, lat
+    real(8), intent(out) :: u, v
+
+    real(8), parameter :: x0 = 0.0d0, y0 = 45.0d0, period = 20.0d0 ! Rotation
+    real(8) :: lon0, lat0, omg
+
+    lon0 = x0 * deg2rad
+    lat0 = y0 * deg2rad
+    omg = pi2 / (period * d)
+
+    u = omg*(cos(lat)*sin(lat0)-cos(lon-lon0)*sin(lat)*cos(lat0))
+    v = omg*(sin(lon-lon0)*cos(lat0))
+
+
+  end subroutine uv_sbody_calc
 
   subroutine uv_nodiv(t,lon,lat,gu,gv)
     use math_module, only: pi=>math_pi, pi2=>math_pi2

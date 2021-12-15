@@ -157,8 +157,8 @@ contains
   subroutine calc_niuv(dt)
     use math_module, only: math_pi, pi2=>math_pi2
     use time_module, only: imethoduv
-    use sphere_module, only: xyz2uv, lonlat2xyz
-    use interpolate_module, only: interpolate_setuv, interpolate_bilinearuv, interpolate_polin2uv
+    use sphere_module, only: xyz2uv, lonlat2xyz, lonlat2uv
+    use uv_module, only: uv_sbody_calc
     implicit none
 
     real(8), intent(in) :: dt
@@ -167,7 +167,6 @@ contains
     real(8) :: xg, yg, zg, xr, yr, zr, xm, ym, zm, xdot, ydot, zdot, lon, lat, lon_grid, lat_grid, u, v, dlonr, b
 
     dlonr = 0.5d0 * nlon / math_pi
-    call interpolate_setuv(gu,gv)
     do j=1, nlat
       lat = latitudes(j)
       do i=1, nlon
@@ -203,11 +202,7 @@ contains
         gum(i,j) = u
         gvm(i,j) = v
 ! calculate velocity at midpoints and -residual velocities
-        if (imethoduv=="polin2") then
-          call interpolate_polin2uv(midlon(i,j), midlat(i,j), u, v)
-        else
-          call interpolate_bilinearuv(midlon(i,j), midlat(i,j), u, v)
-        end if
+        call uv_sbody_calc(midlon(i, j), midlat(i, j), u, v)
         gum(i,j) = gum(i,j) - u
         gvm(i,j) = gvm(i,j) - v
       end do
