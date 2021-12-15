@@ -23,7 +23,7 @@ program advection
       call semilag_init()
       call semilag_timeint()
       call semilag_clean()
-    case("nisl  ")
+    case("nisl")
       call nisl_init()
       call nisl_timeint()
       call nisl_clean()

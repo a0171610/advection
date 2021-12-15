@@ -32,21 +32,21 @@ contains
  
     dlon = pi2/nlon
     do i=1, nlon
-      lon(i) = dlon * (i-1.0d0)
+      lon(i) = dlon * dble(i-1)
     end do
     call legendre_init(nlon,nlat,ntrunc,lat,wgt)
     coslat(:) = cos(lat(:))
-    coslatr(:) = 1.0d0/coslat(:)
+    coslatr(:) = 1.0d0 / coslat(:)
 
     call init_ghill(lon,lat,gphi)
     call legendre_analysis(gphi, sphi)
-    do m=0, ntrunc
-      do n=m, ntrunc
-        sphi_old(n,m) = sphi(n,m)
-      end do
-    end do
+    do m = 0, ntrunc
+      do n = m, ntrunc
+        sphi_old(n, m) = sphi(n, m)
+      enddo
+    enddo
 
-    call uv_sbody(lon,lat,gu,gv)
+    call uv_sbody(lon, lat, gu, gv)
       
 
   end subroutine grid_init

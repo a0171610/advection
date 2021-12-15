@@ -31,8 +31,8 @@ module sphere_module
   
     end subroutine uv2xyz
   
-    subroutine xyz2uv(xd, yd, zd, lon, lat, u, v)
-      use math_module, only: pih=>math_pih
+    subroutine xyz2uv(xd, yd, zd, lon, lat, u, v)   ! Ritchie1987 式(49)
+      use math_module, only: pih=>math_pih  
       implicit none
   
       real(8), intent(in) :: xd, yd, zd, lon, lat

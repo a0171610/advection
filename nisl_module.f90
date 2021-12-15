@@ -117,53 +117,45 @@ contains
     call calc_niuv(dt)
 
     call legendre_synthesis(sphi_old, gphi_old)
-    do j=1, nlat
-      do i=1, nlon
-        gphi(i,j) = gphi_old(p(i,j),q(i,j))
+    do j = 1, nlat
+      do i = 1, nlon
+        gphi(i,j) = gphi_old(p(i,j), q(i,j))
       end do
     end do
 
     ! dF/dlon
     call legendre_synthesis_dlon(sphi, dgphi)
     call interpolate_set(dgphi)
-    do j=1, nlat
-      do i=1, nlon
-        if (imethod=="polin2") then
-          call interpolate_polin2(midlon(i,j), midlat(i,j), dgphim(i,j))
-        else
-          call interpolate_bilinear(midlon(i,j), midlat(i,j), dgphim(i,j))
-        end if
-      end do
+    do j = 1, nlat
+      do i = 1, nlon
+        call interpolate_bilinear(midlon(i,j), midlat(i,j), dgphim(i,j))
+      enddo
       gphim(:,j) = gum(:,j)*coslatr(j)*dgphim(:,j) ! gum: -u'
-    end do
+    enddo
 
     ! cos(lat)dF/dlat
     call legendre_synthesis_dlat(sphi, dgphi) 
     call interpolate_set(dgphi)
-    do j=1, nlat
-      do i=1, nlon
-        if (imethod=="polin2") then
-          call interpolate_polin2(midlon(i,j), midlat(i,j), dgphim(i,j))
-        else
-          call interpolate_bilinear(midlon(i,j), midlat(i,j), dgphim(i,j))
-        end if
-      end do
+    do j = 1, nlat
+      do i = 1, nlon
+        call interpolate_bilinear(midlon(i,j), midlat(i,j), dgphim(i,j))
+      enddo
       gphim(:,j) = gphim(:,j) + gvm(:,j)*coslatr(j)*dgphim(:,j) ! gvm: -v'
-    end do
+    enddo
 
     gphi = gphi + dt*gphim
 
 ! time filter
     call legendre_analysis(gphi, sphi1)
-    do m=0, ntrunc
-      sphi_old(m:ntrunc,m) = sphi(m:ntrunc,m)       
-      sphi(m:ntrunc,m) = sphi1(m:ntrunc,m)
-    end do
+    do m = 0, ntrunc
+      sphi_old(m : ntrunc, m) = sphi(m : ntrunc, m)       
+      sphi(m : ntrunc, m) = sphi1(m : ntrunc, m)
+    enddo
 
   end subroutine update
 
   subroutine calc_niuv(dt)
-    use math_module, only: pir=>math_pir, pi2=>math_pi2
+    use math_module, only: math_pi, pi2=>math_pi2
     use time_module, only: imethoduv
     use sphere_module, only: xyz2uv, lonlat2xyz
     use interpolate_module, only: interpolate_setuv, interpolate_bilinearuv, interpolate_polin2uv
@@ -172,9 +164,9 @@ contains
     real(8), intent(in) :: dt
 
     integer(8) :: i,j
-    real(8) :: xg, yg, zg, xr, yr, zr, xm, ym, zm, xd, yd, zd, lon, lat, lonr, latr, u, v, dlonr, b
+    real(8) :: xg, yg, zg, xr, yr, zr, xm, ym, zm, xdot, ydot, zdot, lon, lat, lon_grid, lat_grid, u, v, dlonr, b
 
-    dlonr = 0.5d0*nlon*pir
+    dlonr = 0.5d0 * nlon / math_pi
     call interpolate_setuv(gu,gv)
     do j=1, nlat
       lat = latitudes(j)
@@ -185,28 +177,28 @@ contains
           p(i,j) = p(i,j)-nlon
         end if
 ! lat = (J+1-2j)pi/(2J+1)
-        q(i,j) = anint(0.5d0*(nlat+1-(2.0d0*nlat+1.0d0)*deplat(i,j)*pir))
-        lonr = longitudes(p(i,j))
-        latr = latitudes(q(i,j))  
-        call lonlat2xyz(lonr,latr,xr,yr,zr)
+        q(i,j) = anint(0.5d0*(nlat+1-(2.0d0*nlat+1.0d0)*deplat(i,j)/math_pi))
+        lon_grid = longitudes(p(i,j))
+        lat_grid = latitudes(q(i,j))  
+        call lonlat2xyz(lon_grid, lat_grid, xr, yr, zr)
 ! arrival points
         lon = longitudes(i)
         call lonlat2xyz(lon,lat,xg,yg,zg)
 ! calculate midpoints between integer departure points and arrival points
-        b = 1.0d0/sqrt(2.0d0*(1.0d0+(xg*xr+yg*yr+zg*zr)))
+        b = 1.0d0/sqrt(2.0d0*(1.0d0+(xg*xr+yg*yr+zg*zr))) ! Ritchie1987 式(44)
         xm = b*(xg + xr)
         ym = b*(yg + yr)
         zm = b*(zg + zr)
         midlon(i,j) = modulo(atan2(ym,xm)+pi2,pi2)
         midlat(i,j) = asin(zm)
-!       print *, real(lon*180/pi), real(midlon(i,j)*180/pi), real(lonr*180/pi), &
-!         real(lat*180/pi), real(midlat(i,j)*180/pi), real(latr*180/pi)
+!       print *, real(lon*180/pi), real(midlon(i,j)*180/pi), real(lon_grid*180/pi), &
+!         real(lat*180/pi), real(midlat(i,j)*180/pi), real(lat_grid*180/pi)
 ! calculate integer velocities at midpoints
-        xd = (xg-xr)/dt
-        yd = (yg-yr)/dt
-        zd = (zg-zr)/dt
-        call xyz2uv(xd, yd, zd, midlon(i,j), midlat(i,j), u, v)
-!       print *, real(lonr*180/pi), real(latr*180/pi), real(u*a), real(v*a)
+        xdot = (xg - xr) / dt
+        ydot = (yg - yr) / dt
+        zdot = (zg - zr) / dt
+        call xyz2uv(xdot, ydot, zdot, midlon(i,j), midlat(i,j), u, v)  !Richie1987式(49)
+!       print *, real(lon_grid*180/pi), real(lat_grid*180/pi), real(u*a), real(v*a)
 !       print *, real(zg), real(zr), real(zd), real(v*a)
         gum(i,j) = u
         gvm(i,j) = v

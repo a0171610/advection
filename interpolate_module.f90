@@ -7,8 +7,8 @@ module interpolate_module
   
     integer(8), private :: nx, ny, n=3, nh, nhalo, nx1, nx2, ny1, ny2 
     integer(8), dimension(4), private :: is, js
-    real(8), private :: u, t, dlon
-    real(8), dimension(:), allocatable, private :: lonf, latf
+    real(8), private :: u, t, dlon                            ! tとuは線分比
+    real(8), dimension(:), allocatable, private :: lon_extend, lat_extend
     real(8), dimension(:,:), allocatable, private :: &
       ff, ffx, ffy, ffxy, fu, fv, ffxl, ffyl
   
@@ -41,19 +41,19 @@ module interpolate_module
       ny1 = 1 - nhalo - 1
       ny2 = ny + nhalo + 1
   
-      allocate(lonf(nx1:nx2), latf(ny1:ny2), ff(nx1:nx2,ny1:ny2), &
+      allocate(lon_extend(nx1:nx2), lat_extend(ny1:ny2), ff(nx1:nx2,ny1:ny2), &
                ffx(nx1:nx2,ny1:ny2), ffy(nx1:nx2,ny1:ny2), ffxy(nx1:nx2,ny1:ny2), &
                ffxl(nx1:nx2,ny1:ny2), ffyl(nx1:nx2,ny1:ny2), &
                fu(nx1:nx2,ny1:ny2),fv(nx1:nx2,ny1:ny2))
   
       dlon = pi2/nx
       do i=nx1, nx2
-        lonf(i) = dlon*(i-1)
+        lon_extend(i) = dlon*(i-1)
       end do
-      latf(1:ny) = latitudes
+      lat_extend(1:ny) = latitudes
       do j=1, nhalo+1
-        latf(1-j)   = pih + (pih - latitudes(j))
-        latf(ny+j)   = -pih + (-pih - latitudes(ny-j+1))
+        lat_extend(1-j)   = pih + (pih - latitudes(j))
+        lat_extend(ny+j)   = -pih + (-pih - latitudes(ny-j+1))
       end do
   
     end subroutine interpolate_init
@@ -61,7 +61,7 @@ module interpolate_module
     subroutine interpolate_clean()
       implicit none
   
-      deallocate(lonf, latf, ff, ffx, ffy, ffxy, fu, fv, ffxl, ffyl)
+      deallocate(lon_extend, lat_extend, ff, ffx, ffy, ffxy, fu, fv, ffxl, ffyl)
   
     end subroutine  interpolate_clean
   
@@ -118,7 +118,7 @@ module interpolate_module
       real(8) :: dlat
   
       call find_stencil(lon, lat)
-      dlat = latf(js(4)) - latf(js(1))
+      dlat = lat_extend(js(4)) - lat_extend(js(1))
       do k=1, 4
         z(k) = ff(is(k),js(k))
         zx(k) = ffx(is(k),js(k))
@@ -149,7 +149,7 @@ module interpolate_module
       j0 = js(1)
       j1 = j0 - nh
       j2 = j0 + nh + 1
-      call polin2(lonf(i1:i2), latf(j1:j2), ff(i1:i2,j1:j2), lon, lat, fi, dfi)
+      call polin2(lon_extend(i1:i2), lat_extend(j1:j2), ff(i1:i2,j1:j2), lon, lat, fi, dfi)
   
   
     end subroutine interpolate_polin2
@@ -172,8 +172,8 @@ module interpolate_module
       j0 = js(1)
       j1 = j0 - nh
       j2 = j0 + nh + 1
-      call polin2(lonf(i1:i2), latf(j1:j2), fu(i1:i2,j1:j2), lon, lat, fiu, dfi)
-      call polin2(lonf(i1:i2), latf(j1:j2), fv(i1:i2,j1:j2), lon, lat, fiv, dfi)
+      call polin2(lon_extend(i1:i2), lat_extend(j1:j2), fu(i1:i2,j1:j2), lon, lat, fiu, dfi)
+      call polin2(lon_extend(i1:i2), lat_extend(j1:j2), fv(i1:i2,j1:j2), lon, lat, fiv, dfi)
   
   ! Bermejo and Staniforth 1992
       if (present(monotonic).and.(monotonic)) then
@@ -210,12 +210,12 @@ module interpolate_module
         ytmp(j-j1+1) =  (1.0d0-t)*ff(i0,j)+t*ff(i0+1,j)
       end do
       do j=j0, j0+1
-        call polint(lonf(i1:i2), ff(i1:i2,j), lon, ytmp(j-j1+1), dfi)
+        call polint(lon_extend(i1:i2), ff(i1:i2,j), lon, ytmp(j-j1+1), dfi)
       end do
       do j=j0+2, j2
         ytmp(j-j1+1) =  (1.0d0-t)*ff(i0,j)+t*ff(i0+1,j)
       end do
-      call polint(latf(j1:j2), ytmp, lat, fi, dfi)
+      call polint(lat_extend(j1:j2), ytmp, lat, fi, dfi)
   
     end subroutine interpolate_linpol
   
@@ -349,13 +349,13 @@ module interpolate_module
       t = lon/dlon - is(1) + 1.0d0 ! t = (lon - dlon*(i-1))/dlon
       is(3:4) = is(2:1:-1)
   
-      j = lat2j(lat,ny) 
-      if (lat>latf(j)) then 
+      j = lat2j(lat, ny) 
+      if (lat > lat_extend(j)) then 
         j = j - 1
       end if
       js(1:2) = j
       js(3:4) = j + 1
-      u = (lat-latf(j))/(latf(j+1)-latf(j))
+      u = (lat-lat_extend(j))/(lat_extend(j+1)-lat_extend(j))
   
     end subroutine find_stencil
   
