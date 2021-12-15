@@ -11,7 +11,7 @@ module nisl_module
     midlon, midlat, deplon, deplat, gum, gvm
   complex(8), dimension(:,:), allocatable, private :: sphi1
 
-  private :: update
+  private :: update, bicubic_interpolation_set
   public :: nisl_init, nisl_timeint, nisl_clean
 
 contains
@@ -110,14 +110,7 @@ contains
 
     ! dF/dlon
     call legendre_synthesis_dlon(sphi, dgphi)
-    call legendre_analysis(dgphi, sphi1)
-    call legendre_synthesis_dlat(sphi1, gphix)
-    call legendre_synthesis_dlat(sphi1, gphiy)
-    call legendre_synthesis_dlonlat(sphi1, gphixy)
-    do j = 1, nlat
-      gphiy(:,j) = gphiy(:,j) * coslatr(j)
-      gphixy(:,j) = gphixy(:,j) * coslatr(j)
-    end do
+    call bicubic_interpolation_set(dgphi) 
     call interpolate_set(dgphi)
     call interpolate_setd(gphix, gphiy, gphixy)
     do j = 1, nlat
@@ -129,14 +122,7 @@ contains
 
     ! cos(lat)dF/dlat
     call legendre_synthesis_dlat(sphi, dgphi) 
-    call legendre_analysis(dgphi, sphi1)
-    call legendre_synthesis_dlat(sphi1, gphix)
-    call legendre_synthesis_dlat(sphi1, gphiy)
-    call legendre_synthesis_dlonlat(sphi1, gphixy)
-    do j = 1, nlat
-      gphiy(:,j) = gphiy(:,j) * coslatr(j)
-      gphixy(:,j) = gphixy(:,j) * coslatr(j)
-    end do
+    call bicubic_interpolation_set(dgphi)
     call interpolate_set(dgphi)
     call interpolate_setd(gphix, gphiy, gphixy)
     do j = 1, nlat
@@ -212,5 +198,24 @@ contains
     end do
         
   end subroutine  calc_niuv
+
+  subroutine bicubic_interpolation_set(f)
+    use legendre_transform_module, only: legendre_analysis, legendre_synthesis_dlat, legendre_synthesis_dlon, &
+      legendre_synthesis_dlonlat
+    implicit none
+    integer(8) :: j
+    real(8), intent(in) :: f(nlon, nlat)
+
+    call legendre_analysis(f, sphi1)
+    call legendre_analysis(dgphi, sphi1)
+    call legendre_synthesis_dlat(sphi1, gphix)
+    call legendre_synthesis_dlat(sphi1, gphiy)
+    call legendre_synthesis_dlonlat(sphi1, gphixy)
+    do j = 1, nlat
+      gphiy(:,j) = gphiy(:,j) * coslatr(j)
+      gphixy(:,j) = gphixy(:,j) * coslatr(j)
+    end do
+
+  end subroutine bicubic_interpolation_set
 
 end module nisl_module
