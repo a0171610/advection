@@ -5,7 +5,7 @@ module grid_module
   integer(8), parameter, public ::  ntrunc = 42, nlon = 128, nlat = 64
 
   complex(8), dimension(:,:), allocatable, public :: sphi, sphi_old
-  real(8), dimension(:,:), allocatable, public :: gphi, gu, gv
+  real(8), dimension(:,:), allocatable, public :: gphi, gphi_initial, gu, gv
   real(8), dimension(:), allocatable, public :: lon, lat, coslat, coslatr, wgt
 
   public :: grid_init, grid_clean
@@ -26,9 +26,9 @@ contains
     integer(8) :: i, m, n
     real(8) :: dlon
 
-    allocate(lon(nlon), lat(nlat), coslat(nlat), coslatr(nlat), wgt(nlat), &
-      gphi(nlon,nlat), gu(nlon,nlat), gv(nlon,nlat), &
-      sphi(0:ntrunc,0:ntrunc), sphi_old(0:ntrunc,0:ntrunc))
+    allocate(lon(nlon), lat(nlat), coslat(nlat), coslatr(nlat), wgt(nlat))
+    allocate(gphi(nlon,nlat), gphi_initial(nlon, nlat), gu(nlon,nlat), gv(nlon,nlat))
+    allocate(sphi(0:ntrunc,0:ntrunc), sphi_old(0:ntrunc,0:ntrunc))
  
     dlon = pi2/nlon
     do i=1, nlon
@@ -39,6 +39,7 @@ contains
     coslatr(:) = 1.0d0 / coslat(:)
 
     call init_ghill(lon,lat,gphi)
+    gphi_initial(:, :) = gphi(:, :)
     call legendre_analysis(gphi, sphi)
     do m = 0, ntrunc
       do n = m, ntrunc
