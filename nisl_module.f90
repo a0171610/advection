@@ -7,7 +7,7 @@ module nisl_module
   
   integer(8), allocatable, private :: p(:,:), q(:,:)
   real(8), dimension(:,:), allocatable, private :: &
-    gphi_old, dgphi, dgphim, gphim, gphi_initial, &
+    gphi_old, dgphi, dgphim, gphim, gphi_initial, gphix, gphiy, gphixy, &
     midlon, midlat, deplon, deplat, gum, gvm
   complex(8), dimension(:,:), allocatable, private :: sphi1
 
@@ -24,11 +24,13 @@ contains
 
     integer(8) :: i,j
 
-    allocate(sphi1(0:ntrunc,0:ntrunc),gphi_old(nlon,nlat), &
-             gphim(nlon,nlat),dgphi(nlon,nlat),dgphim(nlon,nlat), &
-             midlon(nlon,nlat),midlat(nlon,nlat), gphi_initial(nlon, nlat), &
-             deplon(nlon,nlat),deplat(nlon,nlat), p(nlon,nlat), q(nlon,nlat), &
-             gum(nlon,nlat),gvm(nlon,nlat))
+    allocate(sphi1(0:ntrunc, 0:ntrunc),gphi_old(nlon, nlat))
+    allocate(gphim(nlon, nlat),dgphi(nlon, nlat),dgphim(nlon, nlat))
+    allocate(midlon(nlon, nlat), midlat(nlon, nlat), gphi_initial(nlon, nlat))
+    allocate(deplon(nlon, nlat), deplat(nlon, nlat), p(nlon, nlat), q(nlon, nlat))
+    allocate(gum(nlon, nlat), gvm(nlon, nlat))
+    allocate(gphix(nlon, nlat), gphiy(nlon, nlat), gphixy(nlon, nlat))
+
     call interpolate_init(gphi)
 
     call legendre_synthesis(sphi_old,gphi_old)
@@ -48,8 +50,6 @@ contains
           write(11,*) X(i, j), Y(i, j), gphi(i, j)
       end do        
     end do
-    call update(0.25d0*deltat)
-    print *, "step=1", " t=", real(deltat)
     call update(deltat)
 
   end subroutine nisl_init
@@ -107,7 +107,7 @@ contains
     use upstream_module, only: find_points
     use legendre_transform_module, only: legendre_analysis, legendre_synthesis, &
         legendre_synthesis_dlon, legendre_synthesis_dlat, legendre_synthesis_dlonlat
-    use interpolate_module, only: interpolate_set, interpolate_bilinear, interpolate_polin2
+    use interpolate_module, only: interpolate_set, interpolate_bilinear, interpolate_setd, interpolate_bicubic
     implicit none
 
     integer(8) :: i, j, m
@@ -117,6 +117,7 @@ contains
     call calc_niuv(dt)
 
     call legendre_synthesis(sphi_old, gphi_old)
+
     do j = 1, nlat
       do i = 1, nlon
         gphi(i,j) = gphi_old(p(i,j), q(i,j))
@@ -125,25 +126,43 @@ contains
 
     ! dF/dlon
     call legendre_synthesis_dlon(sphi, dgphi)
+    call legendre_analysis(dgphi, sphi1)
+    call legendre_synthesis_dlat(sphi1, gphix)
+    call legendre_synthesis_dlat(sphi1, gphiy)
+    call legendre_synthesis_dlonlat(sphi1, gphixy)
+    do j = 1, nlat
+      gphiy(:,j) = gphiy(:,j) * coslatr(j)
+      gphixy(:,j) = gphixy(:,j) * coslatr(j)
+    end do
     call interpolate_set(dgphi)
+    call interpolate_setd(gphix, gphiy, gphixy)
     do j = 1, nlat
       do i = 1, nlon
-        call interpolate_bilinear(midlon(i,j), midlat(i,j), dgphim(i,j))
+        call interpolate_bicubic(midlon(i,j), midlat(i,j), dgphim(i,j))
       enddo
       gphim(:,j) = gum(:,j)*coslatr(j)*dgphim(:,j) ! gum: -u'
     enddo
 
     ! cos(lat)dF/dlat
     call legendre_synthesis_dlat(sphi, dgphi) 
+    call legendre_analysis(dgphi, sphi1)
+    call legendre_synthesis_dlat(sphi1, gphix)
+    call legendre_synthesis_dlat(sphi1, gphiy)
+    call legendre_synthesis_dlonlat(sphi1, gphixy)
+    do j = 1, nlat
+      gphiy(:,j) = gphiy(:,j) * coslatr(j)
+      gphixy(:,j) = gphixy(:,j) * coslatr(j)
+    end do
     call interpolate_set(dgphi)
+    call interpolate_setd(gphix, gphiy, gphixy)
     do j = 1, nlat
       do i = 1, nlon
-        call interpolate_bilinear(midlon(i,j), midlat(i,j), dgphim(i,j))
+        call interpolate_bicubic(midlon(i,j), midlat(i,j), dgphim(i,j))
       enddo
       gphim(:,j) = gphim(:,j) + gvm(:,j)*coslatr(j)*dgphim(:,j) ! gvm: -v'
     enddo
 
-    gphi = gphi + dt*gphim
+    gphi = gphi + dt * gphim
 
 ! time filter
     call legendre_analysis(gphi, sphi1)
@@ -157,7 +176,7 @@ contains
   subroutine calc_niuv(dt)
     use math_module, only: math_pi, pi2=>math_pi2
     use time_module, only: imethoduv
-    use sphere_module, only: xyz2uv, lonlat2xyz, lonlat2uv
+    use sphere_module, only: xyz2uv, lonlat2xyz
     use uv_module, only: uv_sbody_calc
     implicit none
 
