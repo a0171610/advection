@@ -1,13 +1,13 @@
 module nisl_module
 
   use grid_module, only: nlon, nlat, ntrunc, &
-    gu, gv, gphi, sphi_old, sphi, longitudes=>lon, latitudes=>lat, coslatr
+    gu, gv, gphi, gphi_initial, sphi_old, sphi, longitudes=>lon, latitudes=>lat, coslatr
   use field_module, only : X, Y
   private
   
   integer(8), allocatable, private :: p(:,:), q(:,:)
   real(8), dimension(:,:), allocatable, private :: &
-    gphi_old, dgphi, dgphim, gphim, gphi_initial, gphix, gphiy, gphixy, &
+    gphi_old, dgphi, dgphim, gphim, gphix, gphiy, gphixy, &
     midlon, midlat, deplon, deplat, gum, gvm
   complex(8), dimension(:,:), allocatable, private :: sphi1
 
@@ -26,7 +26,7 @@ contains
 
     allocate(sphi1(0:ntrunc, 0:ntrunc),gphi_old(nlon, nlat))
     allocate(gphim(nlon, nlat),dgphi(nlon, nlat),dgphim(nlon, nlat))
-    allocate(midlon(nlon, nlat), midlat(nlon, nlat), gphi_initial(nlon, nlat))
+    allocate(midlon(nlon, nlat), midlat(nlon, nlat))
     allocate(deplon(nlon, nlat), deplat(nlon, nlat), p(nlon, nlat), q(nlon, nlat))
     allocate(gum(nlon, nlat), gvm(nlon, nlat))
     allocate(gphix(nlon, nlat), gphiy(nlon, nlat), gphixy(nlon, nlat))
@@ -35,7 +35,6 @@ contains
 
     call legendre_synthesis(sphi_old,gphi_old)
     gphi = gphi_old
-    gphi_initial(:, :) = gphi(:, :)
 
     do i=1, nlon
       midlon(i,:) = longitudes(i)
@@ -84,21 +83,6 @@ contains
     end do
     close(11)
     
-    open(10, file="log.txt")
-    do i = 1, nlon
-      do j = 1, nlat
-        write(10,*) X(i, j), Y(i, j), gphi(i, j)
-      enddo
-    enddo
-    close(10)
-
-    open(12, file="error.txt")
-    do j = 1, nlon
-        do k = 1, nlat
-          write(12,*) X(j, k), Y(j, k), gphi_initial(j, k) - gphi(j, k)
-        end do
-    end do
-    close(12)
   end subroutine nisl_timeint
 
   subroutine update(dt)
