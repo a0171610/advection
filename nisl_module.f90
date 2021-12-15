@@ -107,8 +107,7 @@ contains
     use upstream_module, only: find_points
     use legendre_transform_module, only: legendre_analysis, legendre_synthesis, &
         legendre_synthesis_dlon, legendre_synthesis_dlat, legendre_synthesis_dlonlat
-    use interpolate_module, only: &
-      interpolate_set, interpolate_bilinear, interpolate_polin2
+    use interpolate_module, only: interpolate_set, interpolate_bilinear, interpolate_polin2
     implicit none
 
     integer(8) :: i, j, m
@@ -167,15 +166,13 @@ contains
     use math_module, only: pir=>math_pir, pi2=>math_pi2
     use time_module, only: imethoduv
     use sphere_module, only: xyz2uv, lonlat2xyz
-    use interpolate_module, only: &
-       interpolate_setuv, interpolate_bilinearuv, interpolate_polin2uv
+    use interpolate_module, only: interpolate_setuv, interpolate_bilinearuv, interpolate_polin2uv
     implicit none
 
     real(8), intent(in) :: dt
 
     integer(8) :: i,j
-    real(8) :: xg, yg, zg, xr, yr, zr, xm, ym, zm, xd, yd, zd, &
-      lon, lat, lonr, latr, u, v, dlonr, b
+    real(8) :: xg, yg, zg, xr, yr, zr, xm, ym, zm, xd, yd, zd, lon, lat, lonr, latr, u, v, dlonr, b
 
     dlonr = 0.5d0*nlon*pir
     call interpolate_setuv(gu,gv)
