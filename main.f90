@@ -8,6 +8,7 @@ program advection
   use semilag_module, only: semilag_init, semilag_timeint, semilag_clean
   use nisl_module, only: nisl_init, nisl_timeint, nisl_clean
   use field_module, only : field_init
+  use analysis_module, only: error_log
 
   implicit none
 
@@ -31,6 +32,7 @@ program advection
       print *, "No matching model for", model
   end select
   write(*, *) "model = ", model
+  call error_log()
   call grid_clean()
 
 end program advection
