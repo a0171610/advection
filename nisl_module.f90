@@ -34,12 +34,12 @@ contains
     call interpolate_init(gphi)
 
     call legendre_synthesis(sphi_old,gphi_old)
-    gphi = gphi_old
+    gphi(:, :) = gphi_old(:, :)
 
-    do i=1, nlon
-      midlon(i,:) = longitudes(i)
+    do i = 1, nlon
+      midlon(i, :) = longitudes(i)
     end do
-    do j=1, nlat
+    do j = 1, nlat
       midlat(:,j) = latitudes(j)
     end do
 
@@ -70,7 +70,7 @@ contains
 
     integer(8) :: i, j, k
 
-    do i=2, nstep
+    do i = 2, nstep
       call update(2.0d0*deltat)
       write(*, *) 'step = ', i, "maxval = ", maxval(gphi), 'minval = ', minval(gphi)
       if ( mod(i, hstep) == 0 ) then
@@ -156,44 +156,41 @@ contains
     real(8) :: xg, yg, zg, xr, yr, zr, xm, ym, zm, xdot, ydot, zdot, lon, lat, lon_grid, lat_grid, u, v, dlonr, b
 
     dlonr = 0.5d0 * nlon / math_pi
-    do j=1, nlat
+    do j = 1, nlat
       lat = latitudes(j)
-      do i=1, nlon
-! find grid points near departure points
-        p(i,j) = anint(deplon(i,j)*dlonr+1.0d0)
-        if (p(i,j)>nlon) then
-          p(i,j) = p(i,j)-nlon
+      do i = 1, nlon
+        ! find grid points near departure points
+
+        p(i, j) = anint( deplon(i, j) * dlonr + 1.0d0 )
+        if ( p(i,j) > nlon ) then
+          p(i, j) = p(i, j) - nlon
         end if
-! lat = (J+1-2j)pi/(2J+1)
-        q(i,j) = anint(0.5d0*(nlat+1-(2.0d0*nlat+1.0d0)*deplat(i,j)/math_pi))
-        lon_grid = longitudes(p(i,j))
-        lat_grid = latitudes(q(i,j))  
+        ! lat = (J+1-2j)pi/(2J+1)
+        q(i, j) = anint( 0.5d0 * (nlat + 1-( 2.0d0 * nlat + 1.0d0 ) * deplat(i,j) / math_pi) )
+        lon_grid = longitudes( p(i, j) )
+        lat_grid = latitudes( q(i, j) )  
         call lonlat2xyz(lon_grid, lat_grid, xr, yr, zr)
-! arrival points
+        ! arrival points
         lon = longitudes(i)
-        call lonlat2xyz(lon,lat,xg,yg,zg)
-! calculate midpoints between integer departure points and arrival points
-        b = 1.0d0/sqrt(2.0d0*(1.0d0+(xg*xr+yg*yr+zg*zr))) ! Ritchie1987 式(44)
-        xm = b*(xg + xr)
-        ym = b*(yg + yr)
-        zm = b*(zg + zr)
-        midlon(i,j) = modulo(atan2(ym,xm)+pi2,pi2)
+        call lonlat2xyz(lon, lat, xg, yg, zg)
+
+        b = 1.0d0 / sqrt( 2.0d0 * (1.0d0 + (xg*xr+yg*yr+zg*zr))) ! Ritchie1987 式(44)
+        xm = b * (xg + xr)
+        ym = b * (yg + yr)
+        zm = b * (zg + zr)
+        midlon(i,j) = modulo(atan2(ym, xm) + pi2, pi2)
         midlat(i,j) = asin(zm)
-!       print *, real(lon*180/pi), real(midlon(i,j)*180/pi), real(lon_grid*180/pi), &
-!         real(lat*180/pi), real(midlat(i,j)*180/pi), real(lat_grid*180/pi)
-! calculate integer velocities at midpoints
+
         xdot = (xg - xr) / dt
         ydot = (yg - yr) / dt
         zdot = (zg - zr) / dt
-        call xyz2uv(xdot, ydot, zdot, midlon(i,j), midlat(i,j), u, v)  !Richie1987式(49)
-!       print *, real(lon_grid*180/pi), real(lat_grid*180/pi), real(u*a), real(v*a)
-!       print *, real(zg), real(zr), real(zd), real(v*a)
+        call xyz2uv(xdot, ydot, zdot, midlon(i, j), midlat(i, j), u, v)  !Richie1987式(49)
         gum(i,j) = u
         gvm(i,j) = v
-! calculate velocity at midpoints and -residual velocities
+
         call uv_sbody_calc(midlon(i, j), midlat(i, j), u, v)
-        gum(i,j) = gum(i,j) - u
-        gvm(i,j) = gvm(i,j) - v
+        gum(i, j) = gum(i, j) - u
+        gvm(i, j) = gvm(i, j) - v
       end do
     end do
         
