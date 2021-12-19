@@ -44,7 +44,7 @@ module upstream_module
           lon = pi2*dble(i-1)/dble(nx) ! calculate (lon,lat) from (i,j)
           lat = latitudes(j)
           call lonlat2xyz(lon, lat, xg, yg, zg) ! transform into Cartesian coordinates
-          ! r = g as an initial point for the 1st time step
+          ! r = g as an initial point for the 1st time step, 最初midlat, midlonには格子点上の値が入っている
           call lonlat2xyz(midlon(i,j), midlat(i,j), x0, y0, z0) 
           step = 1
           do 
