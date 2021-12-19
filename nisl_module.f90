@@ -97,7 +97,7 @@ contains
     integer(8) :: i, j, m
     real(8), intent(in) :: dt
 
-    call find_points(gu, gv, 0.5d0*dt, midlon, midlat, deplon, deplat)
+    call find_points(gu, gv, 0.5d0*dt, midlon, midlat, deplon, deplat)   ! dtに0.5をかけているのは引数のdtが最初のステップ以外は2.0*deltatを渡しているから
     call calc_niuv(dt)
 
     call legendre_synthesis(sphi_old, gphi_old)

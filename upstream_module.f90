@@ -17,6 +17,7 @@ module upstream_module
   !! midlon, midlatはdt前の出発点(middle), deplon, deplatは2*dt前
     subroutine find_points(u, v, dt, midlon, midlat, deplon, deplat)
       use math_module, only: pi2=>math_pi2
+      use uv_module, only: uv_sbody_calc
       implicit none
   
       real(8), dimension(:,:), intent(in) :: u, v
@@ -57,11 +58,7 @@ module upstream_module
             ! calculate (lon,lat) from (x,y,z)
             lat = asin(z1)
             lon = modulo(atan2(y1,x1)+pi2,pi2)
-            if (imethoduv=="polin2") then
-              call interpolate_polin2uv(lon, lat, un, vn) 
-            else
-              call interpolate_bilinearuv(lon, lat, un, vn) 
-            end if
+            call uv_sbody_calc(lon, lat, un, vn)
             err = sqrt((x1-x0)*(x1-x0)+(y1-y0)*(y1-y0)+(z1-z0)*(z1-z0)) ! calculate error
             x0 = x1 ! save as the current point
             y0 = y1
