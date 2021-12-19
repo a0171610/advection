@@ -1,11 +1,11 @@
-module nisl_module
+module direction_module
 
   use grid_module, only: nlon, nlat, ntrunc, &
     gu, gv, gphi, gphi_initial, sphi_old, sphi, longitudes=>lon, latitudes=>lat
   use field_module, only : X, Y
   private
   
-  integer(8), allocatable, private :: p(:,:), q(:,:)
+  integer(8), allocatable, private :: p(:,:), q(:,:), direction(:, :) ! direction 1 => 左下 2 => 右下 3 => 右上 4 => 左上
   real(8), dimension(:,:), allocatable, private :: &
     gphi_old, dgphi, dgphim, gphim, gphix, gphiy, gphixy, &
     midlon, midlat, deplon, deplat, gum, gvm
@@ -27,7 +27,7 @@ contains
     allocate(sphi1(0:ntrunc, 0:ntrunc),gphi_old(nlon, nlat))
     allocate(gphim(nlon, nlat),dgphi(nlon, nlat),dgphim(nlon, nlat))
     allocate(midlon(nlon, nlat), midlat(nlon, nlat))
-    allocate(deplon(nlon, nlat), deplat(nlon, nlat), p(nlon, nlat), q(nlon, nlat))
+    allocate(deplon(nlon, nlat), deplat(nlon, nlat), p(nlon, nlat), q(nlon, nlat), direction(nlon, nlat))
     allocate(gum(nlon, nlat), gvm(nlon, nlat))
     allocate(gphix(nlon, nlat), gphiy(nlon, nlat), gphixy(nlon, nlat))
 
@@ -50,7 +50,7 @@ contains
       end do        
     end do
     call update(deltat)
-    !latitudes(:) = -1.0d0 * latitudes(:)
+    latitudes(:) = -1.0d0 * latitudes(:)
 
   end subroutine nisl_init
 
@@ -167,10 +167,9 @@ contains
         end if
         ! lat = (J+1-2j)pi/(2J+1)
         q(i, j) = anint( 0.5d0 * (nlat + 1.0d0 - (2.0d0*dble(nlat)+1.0d0)*deplat(i, j) / math_pi) )  !latitudesは大きい順で詰められているので注意
-        !q(i, j) = nlat - q(i, j) + 1
+        write(*,*) latitudes(q(i, j)), latitudes(j)
         lon_grid = longitudes( p(i, j) )
         lat_grid = latitudes( q(i, j) )
-        !write(*,*) lat_grid, deplat(i, j)
         call lonlat2xyz(lon_grid, lat_grid, xr, yr, zr)
         ! arrival points
         call lonlat2xyz(longitudes(i), latitudes(j), xg, yg, zg)
@@ -216,4 +215,4 @@ contains
 
   end subroutine bicubic_interpolation_set
 
-end module nisl_module
+end module direction_module

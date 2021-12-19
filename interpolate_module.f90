@@ -1,6 +1,6 @@
 module interpolate_module
   ! interpolate in a stencil
-    use grid_module, only: latitudes=>lat, coslat, wgt
+    use grid_module, only: latitudes=>lat, wgt
     use sphere_module, only: lon2i, lat2j
     implicit none
     private
@@ -181,9 +181,6 @@ module interpolate_module
         fiv = min(fiv,maxval(fv(i0:i0+1,j0:j0+1)))
         fiv = max(fiv,minval(fv(i0:i0+1,j0:j0+1)))
       end if
-  !    coslatr = 1.0d0/cos(lat)
-  !    fiu = fiu * coslatr
-  !    fiv = fiv * coslatr
   
     end subroutine interpolate_polin2uv
   
@@ -247,8 +244,8 @@ module interpolate_module
       integer(8) :: i, j
   
       do j=1, ny
-        fu(1:nx,j) = gu(:,j)!*coslat(j)
-        fv(1:nx,j) = gv(:,j)!*coslat(j)
+        fu(1:nx,j) = gu(:,j)
+        fv(1:nx,j) = gv(:,j)
       end do
   ! direction of u, v is reversed beyond poles
       do j=1, nh+1
