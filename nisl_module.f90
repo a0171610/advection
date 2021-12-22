@@ -50,7 +50,6 @@ contains
       end do        
     end do
     call update(deltat)
-    !latitudes(:) = -1.0d0 * latitudes(:)
 
   end subroutine nisl_init
 
@@ -167,10 +166,8 @@ contains
         end if
         ! lat = (J+1-2j)pi/(2J+1)
         q(i, j) = anint( 0.5d0 * (nlat + 1.0d0 - (2.0d0*dble(nlat)+1.0d0)*deplat(i, j) / math_pi) )  !latitudesは大きい順で詰められているので注意
-        !q(i, j) = nlat - q(i, j) + 1
         lon_grid = longitudes( p(i, j) )
         lat_grid = latitudes( q(i, j) )
-        !write(*,*) lat_grid, deplat(i, j)
         call lonlat2xyz(lon_grid, lat_grid, xr, yr, zr)
         ! arrival points
         call lonlat2xyz(longitudes(i), latitudes(j), xg, yg, zg)
