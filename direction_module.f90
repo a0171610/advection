@@ -5,18 +5,19 @@ module direction_module
   use field_module, only : X, Y
   private
   
-  integer(8), allocatable, private :: p(:,:), q(:,:), direction(:, :) ! direction 1 => 左下 2 => 右下 3 => 右上 4 => 左上
+  integer(8), allocatable, private :: p(:,:), q(:,:)
+  real(8), allocatable, private :: A(:, :), B(:, :), C(:, :), D(:, :) ! direction 1 => 左下 2 => 右下 3 => 右上 4 => 左上
   real(8), dimension(:,:), allocatable, private :: &
     gphi_old, dgphi, dgphim, gphim, gphix, gphiy, gphixy, &
     midlon, midlat, deplon, deplat, gum, gvm
   complex(8), dimension(:,:), allocatable, private :: sphi1
 
   private :: update, bicubic_interpolation_set
-  public :: nisl_init, nisl_timeint, nisl_clean
+  public :: direction_init, direction_timeint, direction_clean
 
 contains
 
-  subroutine nisl_init()
+  subroutine direction_init()
     use time_module, only: deltat
     use interpolate_module, only: interpolate_init
     use legendre_transform_module, only: legendre_synthesis
@@ -27,7 +28,8 @@ contains
     allocate(sphi1(0:ntrunc, 0:ntrunc),gphi_old(nlon, nlat))
     allocate(gphim(nlon, nlat),dgphi(nlon, nlat),dgphim(nlon, nlat))
     allocate(midlon(nlon, nlat), midlat(nlon, nlat))
-    allocate(deplon(nlon, nlat), deplat(nlon, nlat), p(nlon, nlat), q(nlon, nlat), direction(nlon, nlat))
+    allocate(deplon(nlon, nlat), deplat(nlon, nlat), p(nlon, nlat), q(nlon, nlat))
+    allocate(A(nlon, nlat), B(nlon, nlat), C(nlon, nlat), D(nlon, nlat))
     allocate(gum(nlon, nlat), gvm(nlon, nlat))
     allocate(gphix(nlon, nlat), gphiy(nlon, nlat), gphixy(nlon, nlat))
 
@@ -52,9 +54,9 @@ contains
     call update(deltat)
     latitudes(:) = -1.0d0 * latitudes(:)
 
-  end subroutine nisl_init
+  end subroutine direction_init
 
-  subroutine nisl_clean()
+  subroutine direction_clean()
     use interpolate_module, only: interpolate_clean
     implicit none
 
@@ -62,9 +64,9 @@ contains
       midlon,midlat,deplon,deplat,p,q)
     call interpolate_clean()
 
-  end subroutine nisl_clean
+  end subroutine direction_clean
 
-  subroutine nisl_timeint()
+  subroutine direction_timeint()
     use time_module, only: nstep, deltat, hstep
     use legendre_transform_module, only: legendre_synthesis
     implicit none
@@ -84,7 +86,7 @@ contains
     end do
     close(11)
     
-  end subroutine nisl_timeint
+  end subroutine direction_timeint
 
   subroutine update(dt)
     use time_module, only: imethod
@@ -92,13 +94,19 @@ contains
     use upstream_module, only: find_points
     use legendre_transform_module, only: legendre_analysis, legendre_synthesis, &
         legendre_synthesis_dlon, legendre_synthesis_dlat, legendre_synthesis_dlonlat
-    use interpolate_module, only: interpolate_set, interpolate_bilinear, interpolate_setd, interpolate_bicubic
+    use interpolate_module, only: interpolate_set, interpolate_bilinear, interpolate_setd
+    use interpolate_module, only: interpolate_bicubic, interpolate_bilinear_ratio
     implicit none
 
     integer(8) :: i, j, m
     real(8), intent(in) :: dt
 
     call find_points(gu, gv, 0.5d0*dt, midlon, midlat, deplon, deplat)   ! dtに0.5をかけているのは引数のdtが最初のステップ以外は2.0*deltatを渡しているから
+    do i = 1, nlon
+        do j = 1, nlat
+            call interpolate_bilinear_ratio(deplon(i, j), deplat(i, j), A(i, j), B(i, j), C(i, j), D(i, j))
+        end do
+    end do
     call calc_niuv(dt)
 
     call legendre_synthesis(sphi_old, gphi_old)
@@ -154,7 +162,7 @@ contains
     real(8), intent(in) :: dt
 
     integer(8) :: i,j
-    real(8) :: xg, yg, zg, xr, yr, zr, xm, ym, zm, xdot, ydot, zdot, lon_grid, lat_grid, u, v, dlonr, b
+    real(8) :: xg, yg, zg, xr, yr, zr, xm, ym, zm, xdot, ydot, zdot, lon_grid, lat_grid, u, v, dlonr, bk
 
     dlonr = 0.5d0 * nlon / math_pi
     do j = 1, nlat
@@ -174,10 +182,10 @@ contains
         ! arrival points
         call lonlat2xyz(longitudes(i), latitudes(j), xg, yg, zg)
 
-        b = 1.0d0 / sqrt( 2.0d0 * (1.0d0 + (xg*xr + yg*yr + zg*zr)) ) ! Ritchie1987 式(44)
-        xm = b * (xg + xr)
-        ym = b * (yg + yr)
-        zm = b * (zg + zr)
+        bk = 1.0d0 / sqrt( 2.0d0 * (1.0d0 + (xg*xr + yg*yr + zg*zr)) ) ! Ritchie1987 式(44)
+        xm = bk * (xg + xr)
+        ym = bk * (yg + yr)
+        zm = bk * (zg + zr)
         midlon(i,j) = modulo(atan2(ym, xm) + pi2, pi2)
         midlat(i,j) = asin(zm)
 

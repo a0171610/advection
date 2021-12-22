@@ -18,7 +18,7 @@ module interpolate_module
               interpolate_bilinear, interpolate_bilinearuv, &
               interpolate_polin2, interpolate_polin2uv, &
               interpolate_bicubic, interpolate_linpol, &
-              interpolate_diff
+              interpolate_diff, interpolate_bilinear_ratio
   
   contains
   
@@ -85,6 +85,18 @@ module interpolate_module
       fi = (1.0d0-u)*((1.0d0-t)*fs(1)+t*fs(2)) + u*(t*fs(3)+(1.0d0-t)*fs(4))
   
     end subroutine interpolate_bilinear
+
+    subroutine interpolate_bilinear_ratio(lon, lat, A, B, C, D)
+      implicit none
+      real(8), intent(in) :: lon, lat
+      real(8), intent(out) :: A, B, C, D
+
+      call find_stencil(lon, lat)
+      A = (1.0d0-t) * (1.0d0-u)
+      B = t * (1.0d0-u)
+      C = t * u
+      D = (1.0d0-t) * u        
+    end subroutine interpolate_bilinear_ratio
   
     subroutine interpolate_bilinearuv(lon, lat, fiu, fiv)
       implicit none
