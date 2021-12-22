@@ -7,6 +7,7 @@ program advection
   use euler_module, only: eulerian_init, eulerian_timeint, eulerian_clean
   use semilag_module, only: semilag_init, semilag_timeint, semilag_clean
   use nisl_module, only: nisl_init, nisl_timeint, nisl_clean
+  use direction_module, only: direction_init, direction_timeint, direction_clean
   use field_module, only : field_init
   use analysis_module, only: error_log
 
@@ -28,6 +29,10 @@ program advection
       call nisl_init()
       call nisl_timeint()
       call nisl_clean()
+    case("direction")
+      call direction_init()
+      call direction_timeint()
+      call direction_clean()
     case default
       print *, "No matching model for", model
   end select
