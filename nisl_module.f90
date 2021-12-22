@@ -98,7 +98,7 @@ contains
     real(8), intent(in) :: dt
 
     call find_points(gu, gv, 0.5d0*dt, midlon, midlat, deplon, deplat)   ! dtに0.5をかけているのは引数のdtが最初のステップ以外は2.0*deltatを渡しているから
-    call calc_niuv(dt)
+    call set_niuv(dt)
 
     call legendre_synthesis(sphi_old, gphi_old)
 
@@ -143,7 +143,7 @@ contains
 
   end subroutine update
 
-  subroutine calc_niuv(dt)
+  subroutine set_niuv(dt)
     use math_module, only: math_pi, pi2=>math_pi2
     use time_module, only: imethoduv
     use sphere_module, only: xyz2uv, lonlat2xyz
@@ -192,7 +192,7 @@ contains
       end do
     end do
         
-  end subroutine  calc_niuv
+  end subroutine  set_niuv
 
   subroutine bicubic_interpolation_set(f)
     use legendre_transform_module, only: legendre_analysis, legendre_synthesis_dlat, legendre_synthesis_dlon, &
