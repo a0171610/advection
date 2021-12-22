@@ -92,7 +92,7 @@ contains
     use legendre_transform_module, only: legendre_analysis, legendre_synthesis, &
         legendre_synthesis_dlon, legendre_synthesis_dlat
     use interpolate_module, only: interpolate_set, interpolate_setd
-    use interpolate_module, only: interpolate_bicubic, interpolate_bilinear_ratio
+    use interpolate_module, only: interpolate_bicubic, interpolate_bilinear_ratio, interpolate_bilinear
     implicit none
 
     integer(8) :: i, j, m
@@ -108,9 +108,12 @@ contains
 
     call legendre_synthesis(sphi_old, gphi_old)
 
+    ! まずはgphiにbilinear法で求めた値を詰めていく
+    call interpolate_set(gphi_old)
     do j = 1, nlat
       do i = 1, nlon
         gphi(i,j) = gphi_old(p(i, j), q(i, j))
+        call interpolate_bilinear(longitudes(p(i, j)), latitudes(q(i, j)), gphi(i, j))
       end do
     end do
 
@@ -171,7 +174,6 @@ contains
         end if
         ! lat = (J+1-2j)pi/(2J+1)
         q(i, j) = anint( 0.5d0 * (nlat + 1.0d0 - (2.0d0*dble(nlat)+1.0d0)*deplat(i, j) / math_pi) )  !latitudesは大きい順で詰められているので注意
-        write(*,*) latitudes(q(i, j)), latitudes(j)
         lon_grid = longitudes( p(i, j) )
         lat_grid = latitudes( q(i, j) )
         call lonlat2xyz(lon_grid, lat_grid, xr, yr, zr)
