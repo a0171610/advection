@@ -14,7 +14,6 @@ contains
 
   subroutine grid_init()
     use math_module, only: pi2=>math_pi2
-    use planet_module, only: a=>planet_radius
     use legendre_transform_module, only: &
       legendre_init, legendre_analysis
     use init_module, only: &
