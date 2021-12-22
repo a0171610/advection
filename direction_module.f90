@@ -68,7 +68,6 @@ contains
 
   subroutine direction_timeint()
     use time_module, only: nstep, deltat, hstep
-    use legendre_transform_module, only: legendre_synthesis
     implicit none
 
     integer(8) :: i, j, k
@@ -89,12 +88,10 @@ contains
   end subroutine direction_timeint
 
   subroutine update(dt)
-    use time_module, only: imethod
-    use uv_module, only: uv_nodiv, uv_div
     use upstream_module, only: find_points
     use legendre_transform_module, only: legendre_analysis, legendre_synthesis, &
-        legendre_synthesis_dlon, legendre_synthesis_dlat, legendre_synthesis_dlonlat
-    use interpolate_module, only: interpolate_set, interpolate_bilinear, interpolate_setd
+        legendre_synthesis_dlon, legendre_synthesis_dlat
+    use interpolate_module, only: interpolate_set, interpolate_setd
     use interpolate_module, only: interpolate_bicubic, interpolate_bilinear_ratio
     implicit none
 
@@ -154,7 +151,6 @@ contains
 
   subroutine calc_niuv(dt)
     use math_module, only: math_pi, pi2=>math_pi2
-    use time_module, only: imethoduv
     use sphere_module, only: xyz2uv, lonlat2xyz
     use uv_module, only: uv_sbody_calc
     implicit none
