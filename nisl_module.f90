@@ -86,7 +86,6 @@ contains
   end subroutine nisl_timeint
 
   subroutine update(dt)
-    use time_module, only: imethod
     use uv_module, only: uv_nodiv, uv_div
     use upstream_module, only: find_points
     use legendre_transform_module, only: legendre_analysis, legendre_synthesis, &
@@ -145,17 +144,19 @@ contains
 
   subroutine set_niuv(dt)
     use math_module, only: math_pi, pi2=>math_pi2
-    use time_module, only: imethoduv
     use sphere_module, only: xyz2uv, lonlat2xyz
     use uv_module, only: uv_sbody_calc
+    use upstream_module, only: calc_niuv
     implicit none
 
     real(8), intent(in) :: dt
 
-    integer(8) :: i,j
-    real(8) :: xg, yg, zg, xr, yr, zr, xm, ym, zm, xdot, ydot, zdot, lon_grid, lat_grid, u, v, dlonr, b
+    integer(8) :: i, j
+    real(8) :: dlonr
 
     dlonr = 0.5d0 * nlon / math_pi
+    gum(:, :) = 0.0d0
+    gvm(:, :) = 0.0d0
     do j = 1, nlat
       do i = 1, nlon
         ! find grid points near departure points
@@ -166,29 +167,7 @@ contains
         end if
         ! lat = (J+1-2j)pi/(2J+1)
         q(i, j) = anint( 0.5d0 * (nlat + 1.0d0 - (2.0d0*dble(nlat)+1.0d0)*deplat(i, j) / math_pi) )  !latitudesは大きい順で詰められているので注意
-        lon_grid = longitudes( p(i, j) )
-        lat_grid = latitudes( q(i, j) )
-        call lonlat2xyz(lon_grid, lat_grid, xr, yr, zr)
-        ! arrival points
-        call lonlat2xyz(longitudes(i), latitudes(j), xg, yg, zg)
-
-        b = 1.0d0 / sqrt( 2.0d0 * (1.0d0 + (xg*xr + yg*yr + zg*zr)) ) ! Ritchie1987 式(44)
-        xm = b * (xg + xr)
-        ym = b * (yg + yr)
-        zm = b * (zg + zr)
-        midlon(i,j) = modulo(atan2(ym, xm) + pi2, pi2)
-        midlat(i,j) = asin(zm)
-
-        xdot = (xg - xr) / dt
-        ydot = (yg - yr) / dt
-        zdot = (zg - zr) / dt
-        call xyz2uv(xdot, ydot, zdot, midlon(i, j), midlat(i, j), u, v)  !Richie1987式(49)
-        gum(i,j) = u
-        gvm(i,j) = v
-
-        call uv_sbody_calc(midlon(i, j), midlat(i, j), u, v)
-        gum(i, j) = gum(i, j) - u
-        gvm(i, j) = gvm(i, j) - v
+        call calc_niuv(dt, p(i, j), q(i, j), longitudes(i), latitudes(j), midlon(i, j), midlat(i, j), gum(i, j), gvm(i, j))
       end do
     end do
         

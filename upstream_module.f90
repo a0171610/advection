@@ -11,7 +11,7 @@ module upstream_module
     integer(8), public :: itermax = 5
     real(8), public :: small = 1.0d-10
   
-    public :: find_points
+    public :: find_points, calc_niuv
   
   contains
   !! midlon, midlatはdt前の出発点(middle), deplon, deplatは2*dt前
@@ -81,10 +81,9 @@ module upstream_module
       
     end subroutine find_points
 
-    subroutine calc_niuv(dt, p, q, lon, lat, gum, gvm)
+    subroutine calc_niuv(dt, p, q, lon, lat, midlon, midlat, gum, gvm)
       use grid_module, only: latitudes => lat, longitudes => lon
       use math_module, only: math_pi, pi2=>math_pi2
-      use time_module, only: imethoduv
       use sphere_module, only: xyz2uv, lonlat2xyz
       use uv_module, only: uv_sbody_calc
       implicit none
@@ -92,10 +91,9 @@ module upstream_module
       integer(8), intent(in) :: p, q
       real(8), intent(in) :: lon, lat
       real(8), intent(out) :: gum, gvm
-      integer(8) :: nlon, nlat
+      real(8), intent(out) :: midlon, midlat
 
       real(8) :: xg, yg, zg, xr, yr, zr, xm, ym, zm, xdot, ydot, zdot, lon_grid, lat_grid, u, v, b
-      real(8) :: midlon, midlat
 
 
       lon_grid = longitudes(p)
