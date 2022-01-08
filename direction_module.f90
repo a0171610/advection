@@ -99,7 +99,7 @@ contains
             call interpolate_bilinear_ratio(deplon(i, j), deplat(i, j), A(i, j), B(i, j), C(i, j), D(i, j))
         end do
     end do
-    call calc_niuv(dt)
+    call set_niuv(dt)
 
     call legendre_synthesis(sphi_old, gphi_old)
 
