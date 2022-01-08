@@ -142,7 +142,7 @@ contains
 
     gphi = gphi + dt * gphim
 
-! time filter
+! time step
     call legendre_analysis(gphi, sphi1)
     do m = 0, ntrunc
       sphi_old(m : ntrunc, m) = sphi(m : ntrunc, m)       
