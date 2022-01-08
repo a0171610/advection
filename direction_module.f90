@@ -38,13 +38,6 @@ contains
     call legendre_synthesis(sphi_old,gphi_old)
     gphi(:, :) = gphi_old(:, :)
 
-    do i = 1, nlon
-      midlon(i, :) = longitudes(i)
-    end do
-    do j = 1, nlat
-      midlat(:,j) = latitudes(j)
-    end do
-
     open(11, file="animation.txt")
     do i = 1, nlon
       do j = 1, nlat
