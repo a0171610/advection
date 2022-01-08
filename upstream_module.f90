@@ -2,8 +2,7 @@ module upstream_module
   ! finds departure and mid-points
     use grid_module, only: latitudes=>lat
     use time_module, only: imethoduv
-    use interpolate_module, only: &
-      interpolate_setuv, interpolate_bilinearuv, interpolate_polin2uv
+    use interpolate_module, only: interpolate_setuv, interpolate_bilinearuv, interpolate_polin2uv
     use sphere_module, only: lonlat2xyz, uv2xyz
     implicit none
     private
@@ -46,6 +45,8 @@ module upstream_module
           lat = latitudes(j)
           call lonlat2xyz(lon, lat, xg, yg, zg) ! transform into Cartesian coordinates
           ! r = g as an initial point for the 1st time step, 最初midlat, midlonには格子点上の値が入っている
+          midlat(i, j) = lat
+          midlon(i, j) = lon
           call lonlat2xyz(midlon(i,j), midlat(i,j), x0, y0, z0) 
           step = 1
           do 
@@ -114,8 +115,8 @@ module upstream_module
       ydot = (yg - yr) / dt
       zdot = (zg - zr) / dt
       call xyz2uv(xdot, ydot, zdot, midlon, midlat, u, v)  !Richie1987式(49)
-      gum = u
-      gvm = v
+      gum = gum + u
+      gvm = gvm + v
 
       call uv_sbody_calc(midlon, midlat, u, v)
       gum = gum - u
