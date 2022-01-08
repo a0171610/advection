@@ -11,6 +11,7 @@ module direction_module
     gphi_old, dgphi, dgphim, gphim, gphix, gphiy, gphixy, &
     midlon, midlat, deplon, deplat, gum, gvm
   complex(8), dimension(:,:), allocatable, private :: sphi1
+  integer(8), dimension(:, :, :), allocatable,  private :: is, js
 
   private :: update, bicubic_interpolation_set
   public :: direction_init, direction_timeint, direction_clean
@@ -32,6 +33,7 @@ contains
     allocate(A(nlon, nlat), B(nlon, nlat), C(nlon, nlat), D(nlon, nlat))
     allocate(gum(nlon, nlat), gvm(nlon, nlat))
     allocate(gphix(nlon, nlat), gphiy(nlon, nlat), gphixy(nlon, nlat))
+    allocate(is(nlon, nlat, 4), js(nlon, nlat, 4))
 
     call interpolate_init(gphi)
 
@@ -83,7 +85,7 @@ contains
     use upstream_module, only: find_points
     use legendre_transform_module, only: legendre_analysis, legendre_synthesis, &
         legendre_synthesis_dlon, legendre_synthesis_dlat
-    use interpolate_module, only: interpolate_set, interpolate_setd
+    use interpolate_module, only: interpolate_set, interpolate_setd, find_stencil_
     use interpolate_module, only: interpolate_bicubic, interpolate_bilinear_ratio, interpolate_bilinear
     implicit none
 
@@ -93,6 +95,7 @@ contains
     call find_points(gu, gv, 0.5d0*dt, midlon, midlat, deplon, deplat)   ! dtに0.5をかけているのは引数のdtが最初のステップ以外は2.0*deltatを渡しているから
     do i = 1, nlon
         do j = 1, nlat
+            call find_stencil_(deplon(i, j), deplat(i, j), is(i, j, :), js(i, j, :))
             call interpolate_bilinear_ratio(deplon(i, j), deplat(i, j), A(i, j), B(i, j), C(i, j), D(i, j))
         end do
     end do
@@ -144,18 +147,21 @@ contains
 
   end subroutine update
 
-  subroutine calc_niuv(dt)
+  subroutine set_niuv(dt)
     use math_module, only: math_pi, pi2=>math_pi2
     use sphere_module, only: xyz2uv, lonlat2xyz
     use uv_module, only: uv_sbody_calc
+    use upstream_module, only: calc_niuv
     implicit none
 
     real(8), intent(in) :: dt
 
-    integer(8) :: i,j
-    real(8) :: xg, yg, zg, xr, yr, zr, xm, ym, zm, xdot, ydot, zdot, lon_grid, lat_grid, u, v, dlonr, bk
+    integer(8) :: i, j
+    real(8) :: dlonr
 
     dlonr = 0.5d0 * nlon / math_pi
+    gum(:, :) = 0.0d0
+    gvm(:, :) = 0.0d0
     do j = 1, nlat
       do i = 1, nlon
         ! find grid points near departure points
@@ -166,33 +172,11 @@ contains
         end if
         ! lat = (J+1-2j)pi/(2J+1)
         q(i, j) = anint( 0.5d0 * (nlat + 1.0d0 - (2.0d0*dble(nlat)+1.0d0)*deplat(i, j) / math_pi) )  !latitudesは大きい順で詰められているので注意
-        lon_grid = longitudes( p(i, j) )
-        lat_grid = latitudes( q(i, j) )
-        call lonlat2xyz(lon_grid, lat_grid, xr, yr, zr)
-        ! arrival points
-        call lonlat2xyz(longitudes(i), latitudes(j), xg, yg, zg)
-
-        bk = 1.0d0 / sqrt( 2.0d0 * (1.0d0 + (xg*xr + yg*yr + zg*zr)) ) ! Ritchie1987 式(44)
-        xm = bk * (xg + xr)
-        ym = bk * (yg + yr)
-        zm = bk * (zg + zr)
-        midlon(i,j) = modulo(atan2(ym, xm) + pi2, pi2)
-        midlat(i,j) = asin(zm)
-
-        xdot = (xg - xr) / dt
-        ydot = (yg - yr) / dt
-        zdot = (zg - zr) / dt
-        call xyz2uv(xdot, ydot, zdot, midlon(i, j), midlat(i, j), u, v)  !Richie1987式(49)
-        gum(i,j) = u
-        gvm(i,j) = v
-
-        call uv_sbody_calc(midlon(i, j), midlat(i, j), u, v)
-        gum(i, j) = gum(i, j) - u
-        gvm(i, j) = gvm(i, j) - v
+        call calc_niuv(dt, p(i, j), q(i, j), longitudes(i), latitudes(j), midlon(i, j), midlat(i, j), gum(i, j), gvm(i, j))
       end do
     end do
         
-  end subroutine  calc_niuv
+  end subroutine  set_niuv
 
   subroutine bicubic_interpolation_set(f)
     use legendre_transform_module, only: legendre_analysis, legendre_synthesis_dlat, legendre_synthesis_dlon, &
