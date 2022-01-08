@@ -17,7 +17,7 @@ module interpolate_module
               interpolate_bilinear, interpolate_bilinearuv, &
               interpolate_polin2, interpolate_polin2uv, &
               interpolate_bicubic, interpolate_linpol, &
-              interpolate_diff, interpolate_bilinear_ratio, find_stencil
+              interpolate_diff, interpolate_bilinear_ratio, find_stencil, find_stencil_
   
   contains
   
@@ -365,5 +365,26 @@ module interpolate_module
       u = (lat-lat_extend(j))/(lat_extend(j+1)-lat_extend(j))
   
     end subroutine find_stencil
+
+    subroutine find_stencil_(lon, lat, is_, js_)
+      implicit none
+      real(8), intent(in) :: lon, lat
+      integer(8), dimension(4), intent(out) :: is_, js_
+   
+      integer(8) :: j
   
+      is_(1) = lon2i(lon, nx)
+      is_(2) = is_(1) + 1
+      t = lon/dlon - is_(1) + 1.0d0 ! t = (lon - dlon*(i-1))/dlon
+      is_(3:4) = is_(2:1:-1)
+  
+      j = lat2j(lat, ny)
+      if (lat > lat_extend(j)) then
+        j = j - 1
+      end if
+      js_(1 : 2) = j
+      js_(3 : 4) = j + 1
+      u = (lat - lat_extend(j)) / (lat_extend(j+1) - lat_extend(j))
+
+    end subroutine find_stencil_
   end module interpolate_module
