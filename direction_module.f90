@@ -52,7 +52,6 @@ contains
       end do        
     end do
     call update(deltat)
-    latitudes(:) = -1.0d0 * latitudes(:)
 
   end subroutine direction_init
 
