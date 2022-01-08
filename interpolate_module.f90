@@ -17,7 +17,7 @@ module interpolate_module
               interpolate_bilinear, interpolate_bilinearuv, &
               interpolate_polin2, interpolate_polin2uv, &
               interpolate_bicubic, interpolate_linpol, &
-              interpolate_diff, interpolate_bilinear_ratio, find_stencil, find_stencil_
+              interpolate_diff, interpolate_bilinear_ratio, find_stencil_
   
   contains
   
