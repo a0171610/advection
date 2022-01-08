@@ -11,14 +11,13 @@ module interpolate_module
     real(8), dimension(:), allocatable, private :: lon_extend, lat_extend
     real(8), dimension(:,:), allocatable, private :: ff, ffx, ffy, ffxy, fu, fv, ffxl, ffyl
   
-    private :: find_stencil
     public :: interpolate_init, interpolate_clean, &
               interpolate_set, interpolate_setuv, &
               interpolate_setd, interpolate_setdx, &
               interpolate_bilinear, interpolate_bilinearuv, &
               interpolate_polin2, interpolate_polin2uv, &
               interpolate_bicubic, interpolate_linpol, &
-              interpolate_diff, interpolate_bilinear_ratio
+              interpolate_diff, interpolate_bilinear_ratio, find_stencil
   
   contains
   
