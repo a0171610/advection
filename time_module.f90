@@ -6,5 +6,5 @@ module time_module
   real(8), public :: deltat = 21600.0d0, kappa = 0.0d0
 
   character(len=10), public :: &
-    model = "nisl", imethod = "bilin", imethoduv = "bilin"
+    model = "direction", imethod = "bilin", imethoduv = "bilin"
 end module time_module

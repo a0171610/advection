@@ -6,10 +6,11 @@ module direction_module
   private
   
   integer(8), allocatable, private :: p(:,:), q(:,:)
-  real(8), allocatable, private :: A(:, :), B(:, :), C(:, :), D(:, :) ! direction 1 => 左下 2 => 右下 3 => 右上 4 => 左上
+  real(8), allocatable, private :: A(:, :), B(:, :), C(:, :), D(:, :) 
+  real(8), allocatable, private :: AA(:, :), BB(:, :), CC(:, :), DD(:, :)
   real(8), dimension(:,:), allocatable, private :: &
     gphi_old, dgphi, dgphim, gphim, gphix, gphiy, gphixy, &
-    midlon, midlat, deplon, deplat, gum, gvm
+    midlon, midlat, deplon, deplat, gum, gvm, gumm, gvmm
   complex(8), dimension(:,:), allocatable, private :: sphi1
   integer(8), dimension(:, :, :), allocatable,  private :: is, js
 
@@ -31,7 +32,9 @@ contains
     allocate(midlon(nlon, nlat), midlat(nlon, nlat))
     allocate(deplon(nlon, nlat), deplat(nlon, nlat), p(nlon, nlat), q(nlon, nlat))
     allocate(A(nlon, nlat), B(nlon, nlat), C(nlon, nlat), D(nlon, nlat))
+    allocate(AA(0:nlon+2, -1:nlat+2), BB(0:nlon+2, -1:nlat+2), CC(0:nlon+2, -1:nlat+2), DD(0:nlon+2, -1:nlat+2))
     allocate(gum(nlon, nlat), gvm(nlon, nlat))
+    allocate(gumm(0:nlon+2, -1:nlat+2), gvmm(0:nlon+2, -1:nlat+2))
     allocate(gphix(nlon, nlat), gphiy(nlon, nlat), gphixy(nlon, nlat))
     allocate(is(nlon, nlat, 4), js(nlon, nlat, 4))
 
@@ -55,7 +58,7 @@ contains
     implicit none
 
     deallocate(sphi1,gphi_old,gphim,dgphi,dgphim,gum,gvm, &
-      midlon,midlat,deplon,deplat,p,q)
+      midlon,midlat,deplon,deplat,p,q,is,js)
     call interpolate_clean()
 
   end subroutine direction_clean
@@ -100,6 +103,12 @@ contains
         end do
     end do
     call set_niuv(dt)
+    call regrid(A, AA)
+    call regrid(B, BB)
+    call regrid(C, CC)
+    call regrid(D, DD)
+    call regrid(gum, gumm)
+    call regrid(gvm, gvmm)
 
     call legendre_synthesis(sphi_old, gphi_old)
 
@@ -120,8 +129,12 @@ contains
     do j = 1, nlat
       do i = 1, nlon
         call interpolate_bicubic(midlon(i, j), midlat(i, j), dgphim(i, j))
+!        gphim(i, j) = gum(i, j) * dgphim(i, j) / cos(latitudes(j)) ! gum: -u'
+        gphim(i, j) = gphim(i, j) + AA(is(i,j,1), js(i,j,1)) * gumm(is(i,j,1), js(i,j,1)) * dgphim(i, j) / cos(latitudes(j))
+        gphim(i, j) = gphim(i, j) + BB(is(i,j,2), js(i,j,2)) * gumm(is(i,j,2), js(i,j,2)) * dgphim(i, j) / cos(latitudes(j))
+        gphim(i, j) = gphim(i, j) + CC(is(i,j,3), js(i,j,3)) * gumm(is(i,j,3), js(i,j,3)) * dgphim(i, j) / cos(latitudes(j))
+        gphim(i, j) = gphim(i, j) + DD(is(i,j,4), js(i,j,4)) * gumm(is(i,j,4), js(i,j,4)) * dgphim(i, j) / cos(latitudes(j))
       enddo
-      gphim(:, j) = gum(:, j) * dgphim(:,j) / cos(latitudes(j)) ! gum: -u'
     enddo
 
     ! cos(lat)dF/dlat
@@ -132,11 +145,15 @@ contains
     do j = 1, nlat
       do i = 1, nlon
         call interpolate_bicubic(midlon(i, j), midlat(i, j), dgphim(i, j))
+!        gphim(i, j) = gphim(i, j) + gvm(i, j) * dgphim(i, j) / cos(latitudes(j)) ! gvm: -v'
+        gphim(i, j) = gphim(i, j) + AA(is(i,j,1), js(i,j,1)) * gvmm(is(i,j,1), js(i,j,1)) * dgphim(i, j) / cos(latitudes(j))
+        gphim(i, j) = gphim(i, j) + BB(is(i,j,1), js(i,j,1)) * gvmm(is(i,j,1), js(i,j,1)) * dgphim(i, j) / cos(latitudes(j))
+        gphim(i, j) = gphim(i, j) + CC(is(i,j,1), js(i,j,1)) * gvmm(is(i,j,1), js(i,j,1)) * dgphim(i, j) / cos(latitudes(j))
+        gphim(i, j) = gphim(i, j) + DD(is(i,j,1), js(i,j,1)) * gvmm(is(i,j,1), js(i,j,1)) * dgphim(i, j) / cos(latitudes(j))
       enddo
-      gphim(:, j) = gphim(:, j) + gvm(:, j) * dgphim(:,j) / cos(latitudes(j)) ! gvm: -v'
     enddo
 
-    gphi = gphi + dt * gphim
+    gphi(:, :) = gphi(:, :) + dt * gphim(:, :)
 
 ! time step
     call legendre_analysis(gphi, sphi1)
@@ -196,5 +213,31 @@ contains
     end do
 
   end subroutine bicubic_interpolation_set
+
+  subroutine regrid(f, ff)
+    implicit none
+
+    real(8), dimension(:, :), intent(in) :: f
+    real(8), dimension(0:, -1:), intent(out) :: ff
+
+    integer(8) :: i, j
+    integer(8) :: nx, ny
+
+    nx = size(f, 1)
+    ny = size(f, 2)
+
+    ff(1:nx,1:ny) = f
+    do j = 1, 2
+      ff(1:nx,1-j) = cshift(ff(1:nx,j),nx/2)
+      ff(1:nx,ny+j) = cshift(ff(1:nx,ny-(j-1)),nx/2)
+    end do
+    do i = 1, 1
+      ff(1-i,:) = ff(nx-(i-1),:)
+    end do
+    do i = 1, 2
+      ff(nx+i,:) = ff(1+(i-1),:)
+    end do
+
+  end subroutine regrid
 
 end module direction_module

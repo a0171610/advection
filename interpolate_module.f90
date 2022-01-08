@@ -369,7 +369,7 @@ module interpolate_module
     subroutine find_stencil_(lon, lat, is_, js_)
       implicit none
       real(8), intent(in) :: lon, lat
-      integer(8), dimension(4), intent(out) :: is_, js_
+      integer(8), dimension(:), intent(out) :: is_, js_
    
       integer(8) :: j
   
