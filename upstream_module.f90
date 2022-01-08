@@ -81,6 +81,7 @@ module upstream_module
       
     end subroutine find_points
 
+    ! Ritchie1987 式(45)のu^* - Uをgumに詰める(gvmも)
     subroutine calc_niuv(dt, p, q, lon, lat, midlon, midlat, gum, gvm)
       use grid_module, only: latitudes => lat, longitudes => lon
       use math_module, only: math_pi, pi2=>math_pi2
@@ -113,13 +114,12 @@ module upstream_module
       ydot = (yg - yr) / dt
       zdot = (zg - zr) / dt
       call xyz2uv(xdot, ydot, zdot, midlon, midlat, u, v)  !Richie1987式(49)
-      gum = gum + u
-      gvm = gvm + v
+      gum = u
+      gvm = v
 
       call uv_sbody_calc(midlon, midlat, u, v)
       gum = gum - u
       gvm = gvm - v
-
 
     end subroutine calc_niuv
   
