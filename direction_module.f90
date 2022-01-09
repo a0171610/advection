@@ -7,7 +7,6 @@ module direction_module
   
   integer(8), allocatable, private :: p(:,:), q(:,:)
   real(8), allocatable, private :: A(:, :), B(:, :), C(:, :), D(:, :) 
-  real(8), allocatable, private :: AA(:, :), BB(:, :), CC(:, :), DD(:, :)
   real(8), dimension(:,:), allocatable, private :: &
     gphi_old, dgphi, dgphim, gphim, gphix, gphiy, gphixy, &
     midlon, midlat, deplon, deplat, gum, gvm, gumm, gvmm
@@ -32,7 +31,6 @@ contains
     allocate(midlon(nlon, nlat), midlat(nlon, nlat))
     allocate(deplon(nlon, nlat), deplat(nlon, nlat), p(nlon, nlat), q(nlon, nlat))
     allocate(A(nlon, nlat), B(nlon, nlat), C(nlon, nlat), D(nlon, nlat))
-    allocate(AA(0:nlon+2, -1:nlat+2), BB(0:nlon+2, -1:nlat+2), CC(0:nlon+2, -1:nlat+2), DD(0:nlon+2, -1:nlat+2))
     allocate(gum(nlon, nlat), gvm(nlon, nlat))
     allocate(gumm(0:nlon+2, -1:nlat+2), gvmm(0:nlon+2, -1:nlat+2))
     allocate(gphix(nlon, nlat), gphiy(nlon, nlat), gphixy(nlon, nlat))
@@ -104,10 +102,6 @@ contains
         end do
     end do
     call set_niuv(dt)
-    call regrid(A, AA)
-    call regrid(B, BB)
-    call regrid(C, CC)
-    call regrid(D, DD)
     call regrid(gum, gumm)
     call regrid(gvm, gvmm)
 
@@ -131,10 +125,10 @@ contains
     do j = 1, nlat
       do i = 1, nlon
         call interpolate_bicubic(midlon(i, j), midlat(i, j), dgphim(i, j))
-        gphim(i, j) = gphim(i, j) + AA(i, j) * gumm(is(i,j,1), js(i,j,1)) * dgphim(i, j) / cos(latitudes(j))
-        gphim(i, j) = gphim(i, j) + BB(i, j) * gumm(is(i,j,2), js(i,j,2)) * dgphim(i, j) / cos(latitudes(j))
-        gphim(i, j) = gphim(i, j) + CC(i, j) * gumm(is(i,j,3), js(i,j,3)) * dgphim(i, j) / cos(latitudes(j))
-        gphim(i, j) = gphim(i, j) + DD(i, j) * gumm(is(i,j,4), js(i,j,4)) * dgphim(i, j) / cos(latitudes(j))
+        gphim(i, j) = gphim(i, j) + A(i, j) * gumm(is(i,j,1), js(i,j,1)) * dgphim(i, j) / cos(latitudes(j))
+        gphim(i, j) = gphim(i, j) + B(i, j) * gumm(is(i,j,2), js(i,j,2)) * dgphim(i, j) / cos(latitudes(j))
+        gphim(i, j) = gphim(i, j) + C(i, j) * gumm(is(i,j,3), js(i,j,3)) * dgphim(i, j) / cos(latitudes(j))
+        gphim(i, j) = gphim(i, j) + D(i, j) * gumm(is(i,j,4), js(i,j,4)) * dgphim(i, j) / cos(latitudes(j))
       enddo
     enddo
 
@@ -146,10 +140,10 @@ contains
     do j = 1, nlat
       do i = 1, nlon
         call interpolate_bicubic(midlon(i, j), midlat(i, j), dgphim(i, j))
-        gphim(i, j) = gphim(i, j) + AA(i, j) * gvmm(is(i,j,1), js(i,j,1)) * dgphim(i, j) / cos(latitudes(j))
-        gphim(i, j) = gphim(i, j) + BB(i, j) * gvmm(is(i,j,2), js(i,j,2)) * dgphim(i, j) / cos(latitudes(j))
-        gphim(i, j) = gphim(i, j) + CC(i, j) * gvmm(is(i,j,3), js(i,j,3)) * dgphim(i, j) / cos(latitudes(j))
-        gphim(i, j) = gphim(i, j) + DD(i, j) * gvmm(is(i,j,4), js(i,j,4)) * dgphim(i, j) / cos(latitudes(j))
+        gphim(i, j) = gphim(i, j) + A(i, j) * gvmm(is(i,j,1), js(i,j,1)) * dgphim(i, j) / cos(latitudes(j))
+        gphim(i, j) = gphim(i, j) + B(i, j) * gvmm(is(i,j,2), js(i,j,2)) * dgphim(i, j) / cos(latitudes(j))
+        gphim(i, j) = gphim(i, j) + C(i, j) * gvmm(is(i,j,3), js(i,j,3)) * dgphim(i, j) / cos(latitudes(j))
+        gphim(i, j) = gphim(i, j) + D(i, j) * gvmm(is(i,j,4), js(i,j,4)) * dgphim(i, j) / cos(latitudes(j))
       enddo
     enddo
 
