@@ -94,7 +94,10 @@ contains
     integer(8) :: i, j, m
     real(8), intent(in) :: dt
 
-    call find_points(gu, gv, 0.5d0*dt, midlon, midlat, deplon, deplat)   ! dtに0.5をかけているのは引数のdtが最初のステップ以外は2.0*deltatを渡しているから
+    call find_points(gu, gv, 0.5d0*dt, midlon, midlat, deplon, deplat)
+    ! dtに0.5をかけているのは引数のdtが最初のステップ以外は2.0*deltatを渡しているから
+    ! このmidlon, midlatは上流点と到着点の中点だが今回の計算では使用しない
+    ! 使うのは set_niuvで計算される到着点と上流点に最も近い格子点の中点のmidlon, midlat
     do i = 1, nlon
         do j = 1, nlat
             call find_stencil_(deplon(i, j), deplat(i, j), is(i, j, :), js(i, j, :))
