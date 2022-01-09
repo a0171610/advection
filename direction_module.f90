@@ -111,7 +111,6 @@ contains
     call interpolate_set(gphi_old)
     do j = 1, nlat
       do i = 1, nlon
-        !gphi(i,j) = gphi_old(p(i, j), q(i, j))
         call interpolate_bilinear(longitudes(p(i, j)), latitudes(q(i, j)), gphi(i, j))
       end do
     end do
