@@ -5,11 +5,11 @@ module direction_module
   use field_module, only : X, Y
   private
   
-  integer(8), allocatable, private :: p(:,:), q(:,:)
+  integer(8), dimension(:, :), allocatable, private :: pa, qa, pb, qb, pc, qc, pd, qd
   real(8), allocatable, private :: A(:, :), B(:, :), C(:, :), D(:, :) 
   real(8), dimension(:,:), allocatable, private :: &
-    gphi_old, dgphi, dgphim, gphim, gphix, gphiy, gphixy, &
-    midlon, midlat, deplon, deplat, gum, gvm, gumm, gvmm
+    gphi_old, dgphi, dgphim, gphim, gphix, gphiy, gphixy, deplon, deplat, gum, gvm
+  real(8), dimension(:, :), allocatable, private :: midlonA, midlatA, midlonB, midlatB, midlonC, midlatC, midlonD, midlatD
   complex(8), dimension(:,:), allocatable, private :: sphi1
   integer(8), dimension(:, :, :), allocatable,  private :: is, js
 
@@ -28,11 +28,12 @@ contains
 
     allocate(sphi1(0:ntrunc, 0:ntrunc),gphi_old(nlon, nlat))
     allocate(gphim(nlon, nlat),dgphi(nlon, nlat),dgphim(nlon, nlat))
-    allocate(midlon(nlon, nlat), midlat(nlon, nlat))
-    allocate(deplon(nlon, nlat), deplat(nlon, nlat), p(nlon, nlat), q(nlon, nlat))
+    allocate(midlonA(nlon, nlat), midlatA(nlon, nlat), midlonB(nlon, nlat), midlatB(nlon, nlat))
+    allocate(midlonC(nlon, nlat), midlatC(nlon, nlat), midlonD(nlon, nlat), midlatD(nlon, nlat))
+    allocate(deplon(nlon, nlat), deplat(nlon, nlat), pa(nlon, nlat), qa(nlon, nlat), pb(nlon, nlat), qb(nlon, nlat))
+    allocate(pc(nlon, nlat), qc(nlon, nlat), pd(nlon, nlat), qd(nlon, nlat))
     allocate(A(nlon, nlat), B(nlon, nlat), C(nlon, nlat), D(nlon, nlat))
     allocate(gum(nlon, nlat), gvm(nlon, nlat))
-    allocate(gumm(0:nlon+2, -1:nlat+2), gvmm(0:nlon+2, -1:nlat+2))
     allocate(gphix(nlon, nlat), gphiy(nlon, nlat), gphixy(nlon, nlat))
     allocate(is(nlon, nlat, 4), js(nlon, nlat, 4))
 
@@ -105,8 +106,6 @@ contains
         end do
     end do
     call set_niuv(dt)
-    call regrid(gum, gumm)
-    call regrid(gvm, gvmm)
 
     call legendre_synthesis(sphi_old, gphi_old)
 
