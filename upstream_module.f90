@@ -21,8 +21,9 @@ module upstream_module
   
       real(8), dimension(:,:), intent(in) :: u, v
       real(8), intent(in) :: dt
-      real(8), dimension(:,:), intent(inout) :: midlon, midlat, deplon, deplat
-  
+      real(8), dimension(:,:), optional, intent(inout) :: midlon, midlat
+      real(8), dimension(:, :), intent(inout) :: deplon, deplat
+
       integer(8) :: nx, ny, i, j, step
       real(8) :: un, vn, &     ! normalised velocity
                        bk, &          ! correction factor
