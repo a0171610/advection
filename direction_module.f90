@@ -8,9 +8,10 @@ module direction_module
   integer(8), dimension(:, :), allocatable, private :: pa, qa, pb, qb, pc, qc, pd, qd
   real(8), allocatable, private :: A(:, :), B(:, :), C(:, :), D(:, :) 
   real(8), dimension(:,:), allocatable, private :: &
-    gphi_old, dgphi, dgphim, gphim, gphix, gphiy, gphixy, deplon, deplat
+    gphi_old, dgphi, gphim, gphix, gphiy, gphixy, deplon, deplat
   real(8), dimension(:, :), allocatable, private :: midlonA, midlatA, midlonB, midlatB, midlonC, midlatC, midlonD, midlatD
-  real(8), dimension(:, :), allocatable, private :: guma, gvma, gumb, gvmb, gumc, gvmc, gumd, gvmd
+  real(8), dimension(:, :), allocatable, private :: gumA, gvmA, gumB, gvmB, gumC, gvmC, gumD, gvmD
+  real(8), dimension(:, :), allocatable, private :: dgphimA, dgphimB, dgphimC, dgphimD
   complex(8), dimension(:,:), allocatable, private :: sphi1
   integer(8), dimension(:, :, :), allocatable,  private :: is, js
 
@@ -28,7 +29,7 @@ contains
     integer(8) :: i,j
 
     allocate(sphi1(0:ntrunc, 0:ntrunc),gphi_old(nlon, nlat))
-    allocate(gphim(nlon, nlat),dgphi(nlon, nlat),dgphim(nlon, nlat))
+    allocate(gphim(nlon, nlat),dgphi(nlon, nlat))
     allocate(midlonA(nlon, nlat), midlatA(nlon, nlat), midlonB(nlon, nlat), midlatB(nlon, nlat))
     allocate(midlonC(nlon, nlat), midlatC(nlon, nlat), midlonD(nlon, nlat), midlatD(nlon, nlat))
     allocate(deplon(nlon, nlat), deplat(nlon, nlat), pa(nlon, nlat), qa(nlon, nlat), pb(nlon, nlat), qb(nlon, nlat))
@@ -36,6 +37,7 @@ contains
     allocate(A(nlon, nlat), B(nlon, nlat), C(nlon, nlat), D(nlon, nlat))
     allocate(guma(nlon, nlat), gvma(nlon, nlat), gumb(nlon, nlat), gvmb(nlon, nlat))
     allocate(gumc(nlon, nlat), gvmc(nlon, nlat), gumd(nlon, nlat), gvmd(nlon, nlat))
+    allocate(dgphimA(nlon, nlat), dgphimB(nlon, nlat), dgphimC(nlon, nlat), dgphimD(nlon, nlat))
     allocate(gphix(nlon, nlat), gphiy(nlon, nlat), gphixy(nlon, nlat))
     allocate(is(nlon, nlat, 4), js(nlon, nlat, 4))
 
@@ -59,10 +61,11 @@ contains
     use interpolate_module, only: interpolate_clean
     implicit none
 
-    deallocate(sphi1, gphi_old, gphim, dgphi, dgphim, is, js, deplon, deplat)
+    deallocate(sphi1, gphi_old, gphim, dgphi, is, js, deplon, deplat)
     deallocate(midlonA, midlatA, midlonB, midlatB, midlonC, midlatC, midlonD, midlatD)
     deallocate(guma, gvma, gumb, gvmb, gumc, gvmc, gumd, gvmd)
     deallocate(A, B, C, D, pa, qa, pb, qb, pc, qc, pd, qd)
+    deallocate(dgphima, dgphimb, dgphimc, dgphimd)
     call interpolate_clean()
 
   end subroutine direction_clean
@@ -99,9 +102,9 @@ contains
     integer(8) :: i, j, m
     real(8), intent(in) :: dt
 
-    call find_points(gu, gv, 0.5d0*dt, deplon=deplon, deplat=deplat)
+    call find_points(gu, gv, 0.5d0*dt, midlonA, midlatA, deplon, deplat)
     ! dtに0.5をかけているのは引数のdtが最初のステップ以外は2.0*deltatを渡しているから
-    
+
     do i = 1, nlon
         do j = 1, nlat
             call find_stencil_(deplon(i, j), deplat(i, j), is(i, j, :), js(i, j, :))
@@ -128,11 +131,15 @@ contains
     gphim(:, :) = 0.0d0
     do j = 1, nlat
       do i = 1, nlon
-        call interpolate_bicubic(midlon(i, j), midlat(i, j), dgphim(i, j))
-        gphim(i, j) = gphim(i, j) + A(i, j) * gumm(is(i,j,1), js(i,j,1)) * dgphim(i, j) / cos(latitudes(j))
-        gphim(i, j) = gphim(i, j) + B(i, j) * gumm(is(i,j,2), js(i,j,2)) * dgphim(i, j) / cos(latitudes(j))
-        gphim(i, j) = gphim(i, j) + C(i, j) * gumm(is(i,j,3), js(i,j,3)) * dgphim(i, j) / cos(latitudes(j))
-        gphim(i, j) = gphim(i, j) + D(i, j) * gumm(is(i,j,4), js(i,j,4)) * dgphim(i, j) / cos(latitudes(j))
+        call interpolate_bicubic(midlonA(i, j), midlatA(i, j), dgphimA(i, j))
+        call interpolate_bicubic(midlonB(i, j), midlatB(i, j), dgphimB(i, j))
+        call interpolate_bicubic(midlonC(i, j), midlatC(i, j), dgphimC(i, j))
+        call interpolate_bicubic(midlonD(i, j), midlatD(i, j), dgphimD(i, j))
+
+        gphim(i, j) = gphim(i, j) + A(i, j) * gumA(i, j) * dgphimA(i, j) / cos(latitudes(j))
+        gphim(i, j) = gphim(i, j) + B(i, j) * gumB(i, j) * dgphimB(i, j) / cos(latitudes(j))
+        gphim(i, j) = gphim(i, j) + C(i, j) * gumC(i, j) * dgphimC(i, j) / cos(latitudes(j))
+        gphim(i, j) = gphim(i, j) + D(i, j) * gumD(i, j) * dgphimD(i, j) / cos(latitudes(j))
       enddo
     enddo
 
@@ -143,11 +150,15 @@ contains
     call interpolate_setd(gphix, gphiy, gphixy)
     do j = 1, nlat
       do i = 1, nlon
-        call interpolate_bicubic(midlon(i, j), midlat(i, j), dgphim(i, j))
-        gphim(i, j) = gphim(i, j) + A(i, j) * gvmm(is(i,j,1), js(i,j,1)) * dgphim(i, j) / cos(latitudes(j))
-        gphim(i, j) = gphim(i, j) + B(i, j) * gvmm(is(i,j,2), js(i,j,2)) * dgphim(i, j) / cos(latitudes(j))
-        gphim(i, j) = gphim(i, j) + C(i, j) * gvmm(is(i,j,3), js(i,j,3)) * dgphim(i, j) / cos(latitudes(j))
-        gphim(i, j) = gphim(i, j) + D(i, j) * gvmm(is(i,j,4), js(i,j,4)) * dgphim(i, j) / cos(latitudes(j))
+        call interpolate_bicubic(midlonA(i, j), midlatA(i, j), dgphimA(i, j))
+        call interpolate_bicubic(midlonB(i, j), midlatB(i, j), dgphimB(i, j))
+        call interpolate_bicubic(midlonC(i, j), midlatC(i, j), dgphimC(i, j))
+        call interpolate_bicubic(midlonD(i, j), midlatD(i, j), dgphimD(i, j))
+
+        gphim(i, j) = gphim(i, j) + A(i, j) * gumA(i, j) * dgphimA(i, j) / cos(latitudes(j))
+        gphim(i, j) = gphim(i, j) + B(i, j) * gumB(i, j) * dgphimB(i, j) / cos(latitudes(j))
+        gphim(i, j) = gphim(i, j) + C(i, j) * gumC(i, j) * dgphimC(i, j) / cos(latitudes(j))
+        gphim(i, j) = gphim(i, j) + D(i, j) * gumD(i, j) * dgphimD(i, j) / cos(latitudes(j))
       enddo
     enddo
 
@@ -166,6 +177,7 @@ contains
     use math_module, only: math_pi, pi2=>math_pi2
     use sphere_module, only: xyz2uv, lonlat2xyz
     use uv_module, only: uv_sbody_calc
+    use interpolate_module, only: find_stencil_
     use upstream_module, only: calc_niuv
     implicit none
 
@@ -173,21 +185,22 @@ contains
 
     integer(8) :: i, j
     real(8) :: dlonr
+    integer(8), dimension(4) :: tmp1, tmp2
 
     dlonr = 0.5d0 * nlon / math_pi
-    gum(:, :) = 0.0d0
-    gvm(:, :) = 0.0d0
     do j = 1, nlat
       do i = 1, nlon
         ! find grid points near departure points
+        call find_stencil_(deplon(i, j), deplat(i, j), tmp1, tmp2)
+        pa(i, j) = tmp1(1); qa(i, j) = tmp2(1)
+        pb(i, j) = tmp1(2); qb(i, j) = tmp2(2)
+        pc(i, j) = tmp1(3); qc(i, j) = tmp2(3)
+        pd(i, j) = tmp1(4); qd(i, j) = tmp2(4)
 
-        p(i, j) = anint( deplon(i, j) * dlonr + 1.0d0 )
-        if ( p(i,j) > nlon ) then
-          p(i, j) = p(i, j) - nlon
-        end if
-        ! lat = (J+1-2j)pi/(2J+1)
-        q(i, j) = anint( 0.5d0 * (nlat + 1.0d0 - (2.0d0*dble(nlat)+1.0d0)*deplat(i, j) / math_pi) )  !latitudesは大きい順で詰められているので注意
-        call calc_niuv(dt, p(i, j), q(i, j), longitudes(i), latitudes(j), midlon(i, j), midlat(i, j), gum(i, j), gvm(i, j))
+        call calc_niuv(dt, pa(i, j), qa(i, j), longitudes(i), latitudes(j), midlonA(i, j), midlatA(i, j), gumA(i, j), gvmA(i, j))
+        call calc_niuv(dt, pb(i, j), qb(i, j), longitudes(i), latitudes(j), midlonB(i, j), midlatB(i, j), gumB(i, j), gvmB(i, j))
+        call calc_niuv(dt, pc(i, j), qc(i, j), longitudes(i), latitudes(j), midlonC(i, j), midlatC(i, j), gumC(i, j), gvmC(i, j))
+        call calc_niuv(dt, pd(i, j), qd(i, j), longitudes(i), latitudes(j), midlonD(i, j), midlatD(i, j), gumD(i, j), gvmD(i, j))
       end do
     end do
         
@@ -210,31 +223,5 @@ contains
     end do
 
   end subroutine bicubic_interpolation_set
-
-  subroutine regrid(f, ff)
-    implicit none
-
-    real(8), dimension(:, :), intent(in) :: f
-    real(8), dimension(0:, -1:), intent(out) :: ff
-
-    integer(8) :: i, j
-    integer(8) :: nx, ny
-
-    nx = size(f, 1)
-    ny = size(f, 2)
-
-    ff(1:nx,1:ny) = f
-    do j = 1, 2
-      ff(1:nx,1-j) = cshift(ff(1:nx,j),nx/2)
-      ff(1:nx,ny+j) = cshift(ff(1:nx,ny-(j-1)),nx/2)
-    end do
-    do i = 1, 1
-      ff(1-i,:) = ff(nx-(i-1),:)
-    end do
-    do i = 1, 2
-      ff(nx+i,:) = ff(1+(i-1),:)
-    end do
-
-  end subroutine regrid
 
 end module direction_module

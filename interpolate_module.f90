@@ -8,7 +8,7 @@ module interpolate_module
     integer(8), private :: nx, ny, n=3, nh, nhalo, nx1, nx2, ny1, ny2 
     integer(8), dimension(4), private :: is, js
     real(8), private :: u, t, dlon                            ! tとuは線分比
-    real(8), dimension(:), allocatable, private :: lon_extend, lat_extend
+    real(8), dimension(:), allocatable, public :: lon_extend, lat_extend
     real(8), dimension(:,:), allocatable, private :: ff, ffx, ffy, ffxy, fu, fv, ffxl, ffyl
   
     public :: interpolate_init, interpolate_clean, &
@@ -387,4 +387,5 @@ module interpolate_module
       u = (lat - lat_extend(j)) / (lat_extend(j+1) - lat_extend(j))
 
     end subroutine find_stencil_
+
   end module interpolate_module
