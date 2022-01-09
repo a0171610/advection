@@ -8,8 +8,9 @@ module direction_module
   integer(8), dimension(:, :), allocatable, private :: pa, qa, pb, qb, pc, qc, pd, qd
   real(8), allocatable, private :: A(:, :), B(:, :), C(:, :), D(:, :) 
   real(8), dimension(:,:), allocatable, private :: &
-    gphi_old, dgphi, dgphim, gphim, gphix, gphiy, gphixy, deplon, deplat, gum, gvm
+    gphi_old, dgphi, dgphim, gphim, gphix, gphiy, gphixy, deplon, deplat
   real(8), dimension(:, :), allocatable, private :: midlonA, midlatA, midlonB, midlatB, midlonC, midlatC, midlonD, midlatD
+  real(8), dimension(:, :), allocatable, private :: guma, gvma, gumb, gvmb, gumc, gvmc, gumd, gvmd
   complex(8), dimension(:,:), allocatable, private :: sphi1
   integer(8), dimension(:, :, :), allocatable,  private :: is, js
 
@@ -33,7 +34,8 @@ contains
     allocate(deplon(nlon, nlat), deplat(nlon, nlat), pa(nlon, nlat), qa(nlon, nlat), pb(nlon, nlat), qb(nlon, nlat))
     allocate(pc(nlon, nlat), qc(nlon, nlat), pd(nlon, nlat), qd(nlon, nlat))
     allocate(A(nlon, nlat), B(nlon, nlat), C(nlon, nlat), D(nlon, nlat))
-    allocate(gum(nlon, nlat), gvm(nlon, nlat))
+    allocate(guma(nlon, nlat), gvma(nlon, nlat), gumb(nlon, nlat), gvmb(nlon, nlat))
+    allocate(gumc(nlon, nlat), gvmc(nlon, nlat), gumd(nlon, nlat), gvmd(nlon, nlat))
     allocate(gphix(nlon, nlat), gphiy(nlon, nlat), gphixy(nlon, nlat))
     allocate(is(nlon, nlat, 4), js(nlon, nlat, 4))
 
@@ -57,8 +59,10 @@ contains
     use interpolate_module, only: interpolate_clean
     implicit none
 
-    deallocate(sphi1,gphi_old,gphim,dgphi,dgphim,gum,gvm, &
-      midlon,midlat,deplon,deplat,p,q,is,js)
+    deallocate(sphi1, gphi_old, gphim, dgphi, dgphim, is, js, deplon, deplat)
+    deallocate(midlonA, midlatA, midlonB, midlatB, midlonC, midlatC, midlonD, midlatD)
+    deallocate(guma, gvma, gumb, gvmb, gumc, gvmc, gumd, gvmd)
+    deallocate(A, B, C, D, pa, qa, pb, qb, pc, qc, pd, qd)
     call interpolate_clean()
 
   end subroutine direction_clean
@@ -95,10 +99,9 @@ contains
     integer(8) :: i, j, m
     real(8), intent(in) :: dt
 
-    call find_points(gu, gv, 0.5d0*dt, midlon, midlat, deplon, deplat)
+    call find_points(gu, gv, 0.5d0*dt, deplon=deplon, deplat=deplat)
     ! dtに0.5をかけているのは引数のdtが最初のステップ以外は2.0*deltatを渡しているから
-    ! このmidlon, midlatは上流点と到着点の中点だが今回の計算では使用しない
-    ! 使うのは set_niuvで計算される到着点と上流点に最も近い格子点の中点のmidlon, midlat
+    
     do i = 1, nlon
         do j = 1, nlat
             call find_stencil_(deplon(i, j), deplat(i, j), is(i, j, :), js(i, j, :))
@@ -113,7 +116,7 @@ contains
     call interpolate_set(gphi_old)
     do j = 1, nlat
       do i = 1, nlon
-        call interpolate_bilinear(longitudes(p(i, j)), latitudes(q(i, j)), gphi(i, j))
+        call interpolate_bilinear(deplon(i, j), deplat(i, j), gphi(i, j))
       end do
     end do
 
