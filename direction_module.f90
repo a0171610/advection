@@ -127,6 +127,7 @@ contains
     call bicubic_interpolation_set(dgphi) 
     call interpolate_set(dgphi)
     call interpolate_setd(gphix, gphiy, gphixy)
+    gphim(:, :) = 0.0d0
     do j = 1, nlat
       do i = 1, nlon
         call interpolate_bicubic(midlon(i, j), midlat(i, j), dgphim(i, j))
