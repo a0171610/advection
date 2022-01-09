@@ -13,7 +13,6 @@ module direction_module
   real(8), dimension(:, :), allocatable, private :: gumA, gvmA, gumB, gvmB, gumC, gvmC, gumD, gvmD
   real(8), dimension(:, :), allocatable, private :: dgphimA, dgphimB, dgphimC, dgphimD
   complex(8), dimension(:,:), allocatable, private :: sphi1
-  integer(8), dimension(:, :, :), allocatable,  private :: is, js
 
   private :: update, bicubic_interpolation_set
   public :: direction_init, direction_timeint, direction_clean
@@ -39,7 +38,6 @@ contains
     allocate(gumc(nlon, nlat), gvmc(nlon, nlat), gumd(nlon, nlat), gvmd(nlon, nlat))
     allocate(dgphimA(nlon, nlat), dgphimB(nlon, nlat), dgphimC(nlon, nlat), dgphimD(nlon, nlat))
     allocate(gphix(nlon, nlat), gphiy(nlon, nlat), gphixy(nlon, nlat))
-    allocate(is(nlon, nlat, 4), js(nlon, nlat, 4))
 
     call interpolate_init(gphi)
 
@@ -61,7 +59,7 @@ contains
     use interpolate_module, only: interpolate_clean
     implicit none
 
-    deallocate(sphi1, gphi_old, gphim, dgphi, is, js, deplon, deplat)
+    deallocate(sphi1, gphi_old, gphim, dgphi, deplon, deplat)
     deallocate(midlonA, midlatA, midlonB, midlatB, midlonC, midlatC, midlonD, midlatD)
     deallocate(guma, gvma, gumb, gvmb, gumc, gvmc, gumd, gvmd)
     deallocate(A, B, C, D, pa, qa, pb, qb, pc, qc, pd, qd)
@@ -107,7 +105,6 @@ contains
 
     do i = 1, nlon
         do j = 1, nlat
-            call find_stencil_(deplon(i, j), deplat(i, j), is(i, j, :), js(i, j, :))
             call interpolate_bilinear_ratio(deplon(i, j), deplat(i, j), A(i, j), B(i, j), C(i, j), D(i, j))
         end do
     end do
