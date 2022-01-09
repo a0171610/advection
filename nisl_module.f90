@@ -174,7 +174,6 @@ contains
     real(8), intent(in) :: f(nlon, nlat)
 
     call legendre_analysis(f, sphi1)
-    call legendre_analysis(dgphi, sphi1)
     call legendre_synthesis_dlat(sphi1, gphix)
     call legendre_synthesis_dlat(sphi1, gphiy)
     call legendre_synthesis_dlonlat(sphi1, gphixy)
