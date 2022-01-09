@@ -50,6 +50,7 @@ contains
       end do        
     end do
     call update(deltat)
+    write(*, *) 'step = 1 ', "maxval = ", maxval(gphi), 'minval = ', minval(gphi)
 
   end subroutine direction_init
 
@@ -129,11 +130,10 @@ contains
     do j = 1, nlat
       do i = 1, nlon
         call interpolate_bicubic(midlon(i, j), midlat(i, j), dgphim(i, j))
-!        gphim(i, j) = gum(i, j) * dgphim(i, j) / cos(latitudes(j)) ! gum: -u'
-        gphim(i, j) = gphim(i, j) + AA(is(i,j,1), js(i,j,1)) * gumm(is(i,j,1), js(i,j,1)) * dgphim(i, j) / cos(latitudes(j))
-        gphim(i, j) = gphim(i, j) + BB(is(i,j,2), js(i,j,2)) * gumm(is(i,j,2), js(i,j,2)) * dgphim(i, j) / cos(latitudes(j))
-        gphim(i, j) = gphim(i, j) + CC(is(i,j,3), js(i,j,3)) * gumm(is(i,j,3), js(i,j,3)) * dgphim(i, j) / cos(latitudes(j))
-        gphim(i, j) = gphim(i, j) + DD(is(i,j,4), js(i,j,4)) * gumm(is(i,j,4), js(i,j,4)) * dgphim(i, j) / cos(latitudes(j))
+        gphim(i, j) = gphim(i, j) + AA(i, j) * gumm(is(i,j,1), js(i,j,1)) * dgphim(i, j) / cos(latitudes(j))
+        gphim(i, j) = gphim(i, j) + BB(i, j) * gumm(is(i,j,2), js(i,j,2)) * dgphim(i, j) / cos(latitudes(j))
+        gphim(i, j) = gphim(i, j) + CC(i, j) * gumm(is(i,j,3), js(i,j,3)) * dgphim(i, j) / cos(latitudes(j))
+        gphim(i, j) = gphim(i, j) + DD(i, j) * gumm(is(i,j,4), js(i,j,4)) * dgphim(i, j) / cos(latitudes(j))
       enddo
     enddo
 
@@ -145,11 +145,10 @@ contains
     do j = 1, nlat
       do i = 1, nlon
         call interpolate_bicubic(midlon(i, j), midlat(i, j), dgphim(i, j))
-!        gphim(i, j) = gphim(i, j) + gvm(i, j) * dgphim(i, j) / cos(latitudes(j)) ! gvm: -v'
-        gphim(i, j) = gphim(i, j) + AA(is(i,j,1), js(i,j,1)) * gvmm(is(i,j,1), js(i,j,1)) * dgphim(i, j) / cos(latitudes(j))
-        gphim(i, j) = gphim(i, j) + BB(is(i,j,1), js(i,j,1)) * gvmm(is(i,j,1), js(i,j,1)) * dgphim(i, j) / cos(latitudes(j))
-        gphim(i, j) = gphim(i, j) + CC(is(i,j,1), js(i,j,1)) * gvmm(is(i,j,1), js(i,j,1)) * dgphim(i, j) / cos(latitudes(j))
-        gphim(i, j) = gphim(i, j) + DD(is(i,j,1), js(i,j,1)) * gvmm(is(i,j,1), js(i,j,1)) * dgphim(i, j) / cos(latitudes(j))
+        gphim(i, j) = gphim(i, j) + AA(i, j) * gvmm(is(i,j,1), js(i,j,1)) * dgphim(i, j) / cos(latitudes(j))
+        gphim(i, j) = gphim(i, j) + BB(i, j) * gvmm(is(i,j,2), js(i,j,2)) * dgphim(i, j) / cos(latitudes(j))
+        gphim(i, j) = gphim(i, j) + CC(i, j) * gvmm(is(i,j,3), js(i,j,3)) * dgphim(i, j) / cos(latitudes(j))
+        gphim(i, j) = gphim(i, j) + DD(i, j) * gvmm(is(i,j,4), js(i,j,4)) * dgphim(i, j) / cos(latitudes(j))
       enddo
     enddo
 
