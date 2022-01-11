@@ -77,7 +77,7 @@ module sphere_module
   
       integer(8) :: j
   
-      j = anint(0.5d0*(ny+1-(2.0d0*ny+1.0d0)*lat/pi)) ! lat = (J+1-2j)pi/(2J+1)
+      j = int(anint(0.5d0*(ny+1-(2.0d0*ny+1.0d0)*lat/pi))) ! lat = (J+1-2j)pi/(2J+1)
   
     end function lat2j
   

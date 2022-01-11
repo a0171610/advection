@@ -154,12 +154,12 @@ contains
       do i = 1, nlon
         ! find grid points near departure points
 
-        p(i, j) = anint( deplon(i, j) * dlonr + 1.0d0 )
+        p(i, j) = int(anint( deplon(i, j) * dlonr + 1.0d0 ))
         if ( p(i,j) > nlon ) then
           p(i, j) = p(i, j) - nlon
         end if
         ! lat = (J+1-2j)pi/(2J+1)
-        q(i, j) = anint( 0.5d0 * (nlat + 1.0d0 - (2.0d0*dble(nlat)+1.0d0)*deplat(i, j) / math_pi) )  !latitudesは大きい順で詰められているので注意
+        q(i, j) = int(anint( 0.5d0 * (nlat + 1.0d0 - (2.0d0*dble(nlat)+1.0d0)*deplat(i, j) / math_pi) ))  !latitudesは大きい順で詰められているので注意
         call calc_niuv(dt, p(i, j), q(i, j), longitudes(i), latitudes(j), midlon(i, j), midlat(i, j), gum(i, j), gvm(i, j))
       end do
     end do
