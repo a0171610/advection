@@ -185,6 +185,7 @@ contains
     integer(8), dimension(4) :: tmp1, tmp2
 
     dlonr = 0.5d0 * nlon / math_pi
+    call set_zero()
     do j = 1, nlat
       do i = 1, nlon
         ! find grid points near departure points
@@ -220,5 +221,17 @@ contains
     end do
 
   end subroutine bicubic_interpolation_set
+
+  subroutine set_zero
+    implicit none
+    gumA(:, :) = 0.0d0
+    gumB(:, :) = 0.0d0
+    gumC(:, :) = 0.0d0
+    gumD(:, :) = 0.0d0
+    gvmA(:, :) = 0.0d0
+    gvmB(:, :) = 0.0d0
+    gvmC(:, :) = 0.0d0
+    gvmD(:, :) = 0.0d0
+  end subroutine set_zero
 
 end module direction_module
