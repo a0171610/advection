@@ -367,6 +367,7 @@ module interpolate_module
     end subroutine find_stencil
 
     subroutine find_stencil_(lon, lat, is_, js_)
+      use grid_module, only: pole_regrid
       implicit none
       real(8), intent(in) :: lon, lat
       integer(8), dimension(:), intent(out) :: is_, js_
@@ -384,6 +385,9 @@ module interpolate_module
       end if
       js_(1 : 2) = j
       js_(3 : 4) = j + 1
+      do j = 1, 4
+          call pole_regrid(is_(j), js_(j))
+      end do
       u = (lat - lat_extend(j)) / (lat_extend(j+1) - lat_extend(j))
 
     end subroutine find_stencil_
