@@ -102,13 +102,13 @@ contains
 
     call find_points(gu, gv, 0.5d0*dt, midlonA, midlatA, deplon, deplat)
     ! dtに0.5をかけているのは引数のdtが最初のステップ以外は2.0*deltatを渡しているから
+    call set_niuv(dt)
 
     do i = 1, nlon
         do j = 1, nlat
             call interpolate_bilinear_ratio(deplon(i, j), deplat(i, j), A(i, j), B(i, j), C(i, j), D(i, j))
         end do
     end do
-    call set_niuv(dt)
 
     call legendre_synthesis(sphi_old, gphi_old)
 
