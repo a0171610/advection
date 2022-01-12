@@ -38,7 +38,6 @@ contains
     allocate(gumc(nlon, nlat), gvmc(nlon, nlat), gumd(nlon, nlat), gvmd(nlon, nlat))
     allocate(dgphimA(nlon, nlat), dgphimB(nlon, nlat), dgphimC(nlon, nlat), dgphimD(nlon, nlat))
     allocate(gphix(nlon, nlat), gphiy(nlon, nlat), gphixy(nlon, nlat))
-
     call interpolate_init(gphi)
 
     call legendre_synthesis(sphi_old,gphi_old)
@@ -102,13 +101,14 @@ contains
 
     call find_points(gu, gv, 0.5d0*dt, midlonA, midlatA, deplon, deplat)
     ! dtに0.5をかけているのは引数のdtが最初のステップ以外は2.0*deltatを渡しているから
-    call set_niuv(dt)
 
     do i = 1, nlon
         do j = 1, nlat
             call interpolate_bilinear_ratio(deplon(i, j), deplat(i, j), A(i, j), B(i, j), C(i, j), D(i, j))
         end do
     end do
+
+    call set_niuv(dt)
 
     call legendre_synthesis(sphi_old, gphi_old)
 
@@ -152,10 +152,10 @@ contains
         call interpolate_bicubic(midlonC(i, j), midlatC(i, j), dgphimC(i, j))
         call interpolate_bicubic(midlonD(i, j), midlatD(i, j), dgphimD(i, j))
 
-        gphim(i, j) = gphim(i, j) + A(i, j) * gumA(i, j) * dgphimA(i, j) / cos(latitudes(j))
-        gphim(i, j) = gphim(i, j) + B(i, j) * gumB(i, j) * dgphimB(i, j) / cos(latitudes(j))
-        gphim(i, j) = gphim(i, j) + C(i, j) * gumC(i, j) * dgphimC(i, j) / cos(latitudes(j))
-        gphim(i, j) = gphim(i, j) + D(i, j) * gumD(i, j) * dgphimD(i, j) / cos(latitudes(j))
+        gphim(i, j) = gphim(i, j) + A(i, j) * gvmA(i, j) * dgphimA(i, j) / cos(latitudes(j))
+        gphim(i, j) = gphim(i, j) + B(i, j) * gvmB(i, j) * dgphimB(i, j) / cos(latitudes(j))
+        gphim(i, j) = gphim(i, j) + C(i, j) * gvmC(i, j) * dgphimC(i, j) / cos(latitudes(j))
+        gphim(i, j) = gphim(i, j) + D(i, j) * gvmD(i, j) * dgphimD(i, j) / cos(latitudes(j))
       enddo
     enddo
 
@@ -194,6 +194,7 @@ contains
         pb(i, j) = tmp1(2); qb(i, j) = tmp2(2)
         pc(i, j) = tmp1(3); qc(i, j) = tmp2(3)
         pd(i, j) = tmp1(4); qd(i, j) = tmp2(4)
+
 
         call calc_niuv(dt, pa(i, j), qa(i, j), longitudes(i), latitudes(j), midlonA(i, j), midlatA(i, j), gumA(i, j), gvmA(i, j))
         call calc_niuv(dt, pb(i, j), qb(i, j), longitudes(i), latitudes(j), midlonB(i, j), midlatB(i, j), gumB(i, j), gvmB(i, j))
