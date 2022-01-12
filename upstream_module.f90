@@ -89,7 +89,6 @@ module upstream_module
       use math_module, only: math_pi, pi2=>math_pi2
       use sphere_module, only: xyz2uv, lonlat2xyz
       use uv_module, only: uv_sbody_calc
-      use interpolate_module, only: lat_extend, lon_extend
       implicit none
       real(8), intent(in) :: dt
       integer(8), intent(in) :: p, q
@@ -100,8 +99,8 @@ module upstream_module
       real(8) :: xg, yg, zg, xr, yr, zr, xm, ym, zm, xdot, ydot, zdot, lon_grid, lat_grid, u, v, b
 
 
-      lon_grid = lon_extend(p)
-      lat_grid = lat_extend(q)
+      lon_grid = longitudes(p)
+      lat_grid = latitudes(q)
       call lonlat2xyz(lon_grid, lat_grid, xr, yr, zr)
       ! arrival points
       call lonlat2xyz(lon, lat, xg, yg, zg)
