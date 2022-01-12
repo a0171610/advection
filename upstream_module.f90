@@ -1,7 +1,6 @@
 module upstream_module
   ! finds departure and mid-points
     use grid_module, only: latitudes=>lat
-    use time_module, only: imethoduv
     use interpolate_module, only: interpolate_setuv, interpolate_bilinearuv, interpolate_polin2uv
     use sphere_module, only: lonlat2xyz, uv2xyz
     implicit none
