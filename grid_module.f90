@@ -8,7 +8,7 @@ module grid_module
   real(8), dimension(:,:), allocatable, public :: gphi, gphi_initial, gu, gv
   real(8), dimension(:), allocatable, public :: lon, lat, coslat, coslatr, wgt
 
-  public :: grid_init, grid_clean
+  public :: grid_init, grid_clean, pole_regrid
 
 contains
 
@@ -57,5 +57,32 @@ contains
     deallocate(lon, lat, coslat, coslatr, gphi, gu, gv, sphi, sphi_old)
 
   end subroutine grid_clean
+
+  subroutine pole_regrid(x, y)
+    implicit none
+    integer(8), intent(inout) :: x, y
+    if (x < 1) then
+        x = x + nlon
+    endif
+    if (x > nlon) then
+        x = x - nlon
+    endif
+    if ( y < 1 ) then
+        y = 1 - y
+        if ( x > nlat/2) then
+            x = x - nlat/2
+        else
+            x = x + nlat / 2
+        endif
+    endif
+    if ( y > nlat ) then
+        y = 2 * nlat + 1 - y
+        if ( x > nlat / 2) then
+            x = x - nlat / 2
+        else
+            x = x + nlat / 2
+        endif
+    endif
+end subroutine pole_regrid
 
 end module grid_module
