@@ -38,4 +38,26 @@ contains
     end if
   
   end function math_atan2
+
+  function sphere_orthodrome(lon1, lat1, lon2, lat2) result(l)
+    ! returns the shortest distance between two points on the unit sphere
+      implicit none
+  
+      real(8), intent(in) :: lon1, lat1, lon2, lat2
+      real(8) :: l
+  
+      l = acos(sphere_cosine(sin(lat1),sin(lat2),cos(lat1),cos(lat2),lon1-lon2))
+  
+    end function sphere_orthodrome
+
+    ! spherical triagle composed of points pa, pb, pc and arcs a, b, c
+  function sphere_cosine(cosb, cosc, sinb, sinc, pa) result(cosa)
+    implicit none
+
+    real(8), intent(in) :: cosb, cosc, sinb, sinc, pa
+    real(8) :: cosa
+
+    cosa = cosb*cosc+sinb*sinc*cos(pa)
+
+  end function sphere_cosine
 end module math_module
