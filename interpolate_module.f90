@@ -1,6 +1,6 @@
 module interpolate_module
   ! interpolate in a stencil
-    use grid_module, only: latitudes=>lat, wgt
+    use grid_module, only: latitudes=>lat, wgt, longitudes=>lon
     use sphere_module, only: lon2i, lat2j
     implicit none
     private
@@ -17,7 +17,8 @@ module interpolate_module
               interpolate_bilinear, interpolate_bilinearuv, &
               interpolate_polin2, interpolate_polin2uv, &
               interpolate_bicubic, interpolate_linpol, &
-              interpolate_diff, interpolate_bilinear_ratio, find_stencil_
+              interpolate_diff, interpolate_bilinear_ratio, find_stencil_, &
+              interpolate_bilinear1, interpolate_bilinear_ratio1
   
   contains
   
@@ -96,6 +97,51 @@ module interpolate_module
       C = t * u
       D = (1.0d0-t) * u        
     end subroutine interpolate_bilinear_ratio
+
+    subroutine interpolate_bilinear_ratio1(lon, lat, A, B, C, D)
+      use sphere_module, only: orthodrome
+      use grid_module, only: pole_regrid
+      implicit none
+      real(8), intent(in) :: lon, lat
+      real(8), intent(out) :: A, B, C, D
+      real(8) :: dist1, dist2, dist3, dist4
+
+      call find_stencil(lon, lat)
+      call pole_regrid(is(1), js(1))
+      call pole_regrid(is(2), js(2))
+      call pole_regrid(is(3), js(3))
+      call pole_regrid(is(4), js(4))
+
+      dist1 = 1.0d0/(orthodrome(lon, lat, longitudes(is(1)), latitudes(js(1)))**2)
+      dist2 = 1.0d0/(orthodrome(lon, lat, longitudes(is(2)), latitudes(js(2)))**2)
+      dist3 = 1.0d0/(orthodrome(lon, lat, longitudes(is(3)), latitudes(js(3)))**2)
+      dist4 = 1.0d0/(orthodrome(lon, lat, longitudes(is(4)), latitudes(js(4)))**2)
+      A = dist1 / (dist1 + dist2 + dist3 + dist4)
+      B = dist2 / (dist1 + dist2 + dist3 + dist4)
+      C = dist3 / (dist1 + dist2 + dist3 + dist4)
+      D = dist4 / (dist1 + dist2 + dist3 + dist4)
+
+    end subroutine interpolate_bilinear_ratio1
+
+    subroutine interpolate_bilinear1(lon, lat, fi)
+      implicit none
+
+      real(8), intent(in) :: lon, lat
+      real(8), intent(out) :: fi
+      real(8) :: A, B, C, D
+      real(8), dimension(4) :: fs
+      integer(8) :: k
+
+      call find_stencil(lon, lat)
+      do k=1, 4
+        fs(k) = ff(is(k),js(k))
+      end do
+
+      call interpolate_bilinear_ratio1(lon, lat, A, B, C, D)
+
+      fi = A * fs(1) + B * fs(2) + C * fs(3) + D * fs(4)
+
+    end subroutine interpolate_bilinear1
   
     subroutine interpolate_bilinearuv(lon, lat, fiu, fiv)
       implicit none
