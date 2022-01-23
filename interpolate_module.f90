@@ -18,7 +18,7 @@ module interpolate_module
               interpolate_polin2, interpolate_polin2uv, &
               interpolate_bicubic, interpolate_linpol, &
               interpolate_diff, interpolate_bilinear_ratio, find_stencil_, &
-              interpolate_bilinear1, interpolate_bilinear_ratio1
+              interpolate_dist, interpolate_dist_ratio
   
   contains
   
@@ -98,7 +98,7 @@ module interpolate_module
       D = (1.0d0-t) * u        
     end subroutine interpolate_bilinear_ratio
 
-    subroutine interpolate_bilinear_ratio1(lon, lat, A, B, C, D)
+    subroutine interpolate_dist_ratio(lon, lat, A, B, C, D)
       use sphere_module, only: orthodrome
       use grid_module, only: pole_regrid
       implicit none
@@ -121,9 +121,9 @@ module interpolate_module
       C = dist3 / (dist1 + dist2 + dist3 + dist4)
       D = dist4 / (dist1 + dist2 + dist3 + dist4)
 
-    end subroutine interpolate_bilinear_ratio1
+    end subroutine interpolate_dist_ratio
 
-    subroutine interpolate_bilinear1(lon, lat, fi)
+    subroutine interpolate_dist(lon, lat, fi)
       implicit none
 
       real(8), intent(in) :: lon, lat
@@ -137,11 +137,11 @@ module interpolate_module
         fs(k) = ff(is(k),js(k))
       end do
 
-      call interpolate_bilinear_ratio1(lon, lat, A, B, C, D)
+      call interpolate_dist_ratio(lon, lat, A, B, C, D)
 
       fi = A * fs(1) + B * fs(2) + C * fs(3) + D * fs(4)
 
-    end subroutine interpolate_bilinear1
+    end subroutine interpolate_dist
   
     subroutine interpolate_bilinearuv(lon, lat, fiu, fiv)
       implicit none

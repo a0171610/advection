@@ -93,7 +93,8 @@ contains
     use legendre_transform_module, only: legendre_analysis, legendre_synthesis, &
         legendre_synthesis_dlon, legendre_synthesis_dlat
     use interpolate_module, only: interpolate_set, interpolate_setd, find_stencil_
-    use interpolate_module, only: interpolate_bicubic, interpolate_bilinear_ratio1, interpolate_bilinear1
+    use interpolate_module, only: interpolate_bicubic, interpolate_bilinear, interpolate_bilinear_ratio
+    use interpolate_module, only: interpolate_dist, interpolate_dist_ratio
     implicit none
 
     integer(8) :: i, j, m
@@ -104,7 +105,7 @@ contains
 
     do i = 1, nlon
         do j = 1, nlat
-            call interpolate_bilinear_ratio1(deplon(i, j), deplat(i, j), A(i, j), B(i, j), C(i, j), D(i, j))
+            call interpolate_bilinear_ratio(deplon(i, j), deplat(i, j), A(i, j), B(i, j), C(i, j), D(i, j))
         end do
     end do
 
@@ -116,7 +117,7 @@ contains
     call interpolate_set(gphi_old)
     do j = 1, nlat
       do i = 1, nlon
-        call interpolate_bilinear1(deplon(i, j), deplat(i, j), gphi(i, j))
+        call interpolate_bilinear(deplon(i, j), deplat(i, j), gphi(i, j))
       end do
     end do
 
