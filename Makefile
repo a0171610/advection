@@ -29,9 +29,9 @@ upstream_module.o : sphere_module.o grid_module.o time_module.o interpolate_modu
 interpolate_module.o : math_module.o grid_module.o sphere_module.o bicubic_module.o polint_module.o
 grid_module.o : legendre_transform_module.o init_module.o uv_module.o
 euler_module.o : planet_module.o grid_module.o time_module.o legendre_transform_module.o uv_module.o field_module.o
-semilag_module.o : grid_module.o time_module.o legendre_transform_module.o upstream_module.o field_module.o
-nisl_module.o : grid_module.o time_module.o legendre_transform_module.o upstream_module.o sphere_module.o field_module.o mass_module.f90
-direction_module.o : grid_module.o time_module.o legendre_transform_module.o upstream_module.o sphere_module.o field_module.o
+semilag_module.o : grid_module.o time_module.o legendre_transform_module.o upstream_module.o field_module.o mass_module.o
+nisl_module.o : grid_module.o time_module.o legendre_transform_module.o upstream_module.o sphere_module.o field_module.o mass_module.o
+direction_module.o : grid_module.o time_module.o legendre_transform_module.o upstream_module.o sphere_module.o field_module.o mass_module.o
 main.o : grid_module.o time_module.o euler_module.o semilag_module.o nisl_module.o field_module.o analysis_module.o direction_module.o
 
 clean :
