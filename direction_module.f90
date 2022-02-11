@@ -1,8 +1,10 @@
 module direction_module
 
   use grid_module, only: nlon, nlat, ntrunc, &
-    gu, gv, gphi, gphi_initial, sphi_old, sphi, longitudes=>lon, latitudes=>lat
+    gu, gv, gphi, gphi_initial, sphi_old, sphi, longitudes=>lon, latitudes=>lat, wgt
   use field_module, only : X, Y
+  use mass_module, only: mass_correct
+  use time_module, only: conserve
   private
   
   integer(8), dimension(:, :), allocatable, private :: pa, qa, pb, qb, pc, qc, pd, qd
@@ -12,6 +14,7 @@ module direction_module
   real(8), dimension(:, :), allocatable, private :: midlonA, midlatA, midlonB, midlatB, midlonC, midlatC, midlonD, midlatD
   real(8), dimension(:, :), allocatable, private :: gumA, gvmA, gumB, gvmB, gumC, gvmC, gumD, gvmD
   real(8), dimension(:, :), allocatable, private :: dgphimA, dgphimB, dgphimC, dgphimD
+  real(8), dimension(:, :), allocatable, private :: gmin, gmax, w
   complex(8), dimension(:,:), allocatable, private :: sphi1
 
   private :: update, bicubic_interpolation_set
@@ -38,6 +41,15 @@ contains
     allocate(gumc(nlon, nlat), gvmc(nlon, nlat), gumd(nlon, nlat), gvmd(nlon, nlat))
     allocate(dgphimA(nlon, nlat), dgphimB(nlon, nlat), dgphimC(nlon, nlat), dgphimD(nlon, nlat))
     allocate(gphix(nlon, nlat), gphiy(nlon, nlat), gphixy(nlon, nlat))
+    if (conserve) then
+      allocate(gmax(nlon,nlat),gmin(nlon,nlat),w(nlon,nlat))
+      do j=1, nlat
+        w(:,j) = wgt(j)
+      end do
+      gmin(:,:) = minval(gphi)
+      gmax(:,:) = maxval(gphi)
+    endif
+
     call interpolate_init(gphi)
 
     call legendre_synthesis(sphi_old,gphi_old)
@@ -113,6 +125,11 @@ contains
 
     call legendre_synthesis(sphi_old, gphi_old)
 
+    if (conserve) then
+      gmin(:, :) = min(0.0d0, minval(gphi))
+      gmax(:, :) = max(0.0d0, maxval(gphi))
+    end if
+
     ! まずはgphiにbilinear法で求めた値を詰めていく
     call interpolate_set(gphi_old)
     do j = 1, nlat
@@ -162,6 +179,10 @@ contains
 
     gphi(:, :) = gphi(:, :) + dt * gphim(:, :)
 
+    if (conserve) then
+      call mass_correct(gphi,gphi_old,gmax,gmin,w)
+    end if
+    
 ! time step
     call legendre_analysis(gphi, sphi1)
     do m = 0, ntrunc
