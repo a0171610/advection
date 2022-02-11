@@ -45,5 +45,6 @@ contains
         end do
     end do
     write(*,*) '△q = ', dq, '△q+', dqp
+    write(*,*) "initial mass sum", sum(gphi_initial(:, :)), "end mass sum", sum(gphi(:, :))
   end subroutine error_log
 end module analysis_module

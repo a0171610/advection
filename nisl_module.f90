@@ -1,14 +1,16 @@
 module nisl_module
 
   use grid_module, only: nlon, nlat, ntrunc, &
-    gu, gv, gphi, gphi_initial, sphi_old, sphi, longitudes=>lon, latitudes=>lat
+    gu, gv, gphi, gphi_initial, sphi_old, sphi, longitudes=>lon, latitudes=>lat, wgt
   use field_module, only : X, Y
+  use mass_module, only: mass_correct
+  use time_module, only: conserve
   private
   
   integer(8), allocatable, private :: p(:,:), q(:,:)
   real(8), dimension(:,:), allocatable, private :: &
     gphi_old, dgphi, dgphim, gphim, gphix, gphiy, gphixy, &
-    midlon, midlat, deplon, deplat, gum, gvm
+    midlon, midlat, deplon, deplat, gum, gvm, gmin, gmax, w
   complex(8), dimension(:,:), allocatable, private :: sphi1
 
   private :: update, bicubic_interpolation_set
@@ -35,6 +37,15 @@ contains
 
     call legendre_synthesis(sphi_old,gphi_old)
     gphi(:, :) = gphi_old(:, :)
+
+    if (conserve) then
+      allocate(gmax(nlon,nlat),gmin(nlon,nlat),w(nlon,nlat))
+      do j=1, nlat
+        w(:,j) = wgt(j)
+      end do
+      gmin(:,:) = minval(gphi)
+      gmax(:,:) = maxval(gphi)
+    endif
 
     open(11, file="animation.txt")
     do i = 1, nlon
@@ -94,6 +105,11 @@ contains
 
     call legendre_synthesis(sphi_old, gphi_old)
 
+    if (conserve) then
+      gmin(:, :) = min(0.0d0, minval(gphi))
+      gmax(:, :) = max(0.0d0, maxval(gphi))
+    end if
+
     do j = 1, nlat
       do i = 1, nlon
         gphi(i,j) = gphi_old(p(i, j), q(i, j))
@@ -125,6 +141,10 @@ contains
     enddo
 
     gphi = gphi + dt * gphim
+
+    if(conserve) then
+      call mass_correct(gphi, gphi_old, gmax, gmin, w)
+    endif
 
 ! time filter
     call legendre_analysis(gphi, sphi1)
