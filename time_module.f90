@@ -7,4 +7,5 @@ module time_module
 
   character(len=10), public :: &
     model = "direction", imethod = "sph"
+  logical, public :: conserve = .false.
 end module time_module
