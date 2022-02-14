@@ -12,7 +12,7 @@ contains
     real(8), dimension(:, :), intent(in) :: fold, gmax, gmin, w
 
     real(8), dimension(size(f,1),size(f,2)) :: f1, f2, f3
-    real(8) :: df, a, b, s2, s3, s2r, f1f2w, f1f1f2f2w, s3s2f3, b1, b2, f1f2, error
+    real(8) :: df, a, b, s2, s3, s2r, f1f2w, f1f1f2f2w, s3s2f3, b1, b2, f1f2
 
     integer(8) :: nx, ny, i, j
 
@@ -49,15 +49,12 @@ contains
     a = (df - b*s3) * s2r
 
 ! Correct
-    error = 0.0d0
     do j = 1, ny
       do i = 1, nx
         f1f2 = f1(i,j) * f2(i,j)
         f(i,j) = f(i,j) + a * f1f2 + b * f1f2 * f3(i,j)
-        error = error + (fold(i,j)-f(i,j))*w(i,j)
       end do
     end do
-    print *, "error = ", error
     
   end subroutine mass_correct
 
