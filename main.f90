@@ -8,6 +8,7 @@ program advection
   use semilag_module, only: semilag_init, semilag_timeint, semilag_clean
   use nisl_module, only: nisl_init, nisl_timeint, nisl_clean
   use direction_module, only: direction_init, direction_timeint, direction_clean
+  use direction16_module, only: direction16_init, direction16_timeint, direction16_clean
   use field_module, only : field_init
   use analysis_module, only: error_log
 
@@ -33,6 +34,10 @@ program advection
       call direction_init()
       call direction_timeint()
       call direction_clean()
+    case("direction1")
+      call direction16_init()
+      call direction16_timeint()
+      call direction16_clean()
     case default
       print *, "No matching model for", model
   end select
