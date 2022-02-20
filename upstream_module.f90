@@ -1,7 +1,8 @@
 module upstream_module
   ! finds departure and mid-points
     use grid_module, only: latitudes=>lat
-    use interpolate_module, only: interpolate_setuv, interpolate_bilinearuv, interpolate_polin2uv
+    use interpolate_module, only: interpolate_setuv
+    use interpolate16_module, only: interpolate16_setuv
     use sphere_module, only: lonlat2xyz, uv2xyz
     implicit none
     private
@@ -35,7 +36,7 @@ module upstream_module
       nx = size(u,1)
       ny = size(u,2)
   
-      call interpolate_setuv(u,v)
+      call interpolate16_setuv(u, v)
       do j = 1, ny
         do i = 1, nx
           ! calculate initial values
