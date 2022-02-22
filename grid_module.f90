@@ -69,18 +69,18 @@ contains
     endif
     if ( y < 1 ) then
         y = 1 - y
-        if ( x > nlat/2) then
-            x = x - nlat/2
+        if ( x > nlon/2) then
+            x = x - nlon/2
         else
-            x = x + nlat / 2
+            x = x + nlon/2
         endif
     endif
     if ( y > nlat ) then
         y = 2 * nlat + 1 - y
-        if ( x > nlat / 2) then
-            x = x - nlat / 2
+        if ( x > nlon/2) then
+            x = x - nlon/2
         else
-            x = x + nlat / 2
+            x = x + nlon/2
         endif
     endif
 end subroutine pole_regrid
