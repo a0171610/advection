@@ -17,6 +17,7 @@ module upstream_module
     subroutine find_points(u, v, dt, midlon, midlat, deplon, deplat)
       use math_module, only: pi2=>math_pi2
       use uv_module, only: uv_sbody_calc
+      use time_module, only: model
       implicit none
   
       real(8), dimension(:,:), intent(in) :: u, v
@@ -36,7 +37,12 @@ module upstream_module
       nx = size(u,1)
       ny = size(u,2)
   
-      call interpolate16_setuv(u, v)
+      if (model == "direction1") then
+        call interpolate16_setuv(u, v)
+      else
+        call interpolate_setuv(u, v)
+      endif
+      
       do j = 1, ny
         do i = 1, nx
           ! calculate initial values
