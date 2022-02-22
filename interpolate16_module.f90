@@ -6,7 +6,6 @@ module interpolate16_module
     private
   
     integer(8), private :: nx, ny, n = 3, nh, nhalo, nx1, nx2, ny1, ny2 
-    integer(8), dimension(16), private :: is, js
     real(8), private :: u, t, dlon                            ! tとuは線分比
     real(8), dimension(:), allocatable, public :: lon_extend, lat_extend
     real(8), dimension(:,:), allocatable, private :: ff, ffx, ffy, ffxy, fu, fv, ffxl, ffyl
@@ -89,9 +88,10 @@ module interpolate16_module
       real(8), intent(out) :: ans
       real(8) :: weight(16)
       real(8), dimension(16) :: fs
+      integer(8), dimension(16) :: is, js
       integer(8) :: i
 
-      call find_stencil(lon, lat)
+      call find_stencil_16(lon, lat, is, js)
       do i = 1, 16
         fs(i) = ff(is(i), js(i))
       end do
@@ -125,38 +125,28 @@ module interpolate16_module
   
     end subroutine interpolate16_set
   
-    subroutine find_stencil(lon, lat)
-      implicit none
-  
-      real(8), intent(in) :: lon, lat
-      call find_stencil_16(lon, lat, is, js)
-    end subroutine find_stencil
-
-    subroutine find_stencil_(lon, lat, is_, js_)
+    subroutine find_stencil_4(lon, lat, is, js)
       use grid_module, only: pole_regrid
       implicit none
       real(8), intent(in) :: lon, lat
-      integer(8), dimension(:), intent(out) :: is_, js_
+      integer(8), dimension(:), intent(out) :: is, js
    
       integer(8) :: j
   
-      is_(1) = lon2i(lon, nx)
-      is_(2) = is_(1) + 1
-      t = lon/dlon - is_(1) + 1.0d0 ! t = (lon - dlon*(i-1))/dlon
-      is_(3:4) = is_(2:1:-1)
+      is(1) = lon2i(lon, nx)
+      is(2) = is(1) + 1
+      t = lon/dlon - is(1) + 1.0d0 ! t = (lon - dlon*(i-1))/dlon
+      is(3:4) = is(2:1:-1)
   
       j = lat2j(lat, ny)
       if (lat > lat_extend(j)) then
         j = j - 1
       end if
-      js_(1 : 2) = j
-      js_(3 : 4) = j + 1
-      do j = 1, 4
-          call pole_regrid(is_(j), js_(j))
-      end do
+      js(1 : 2) = j
+      js(3 : 4) = j + 1
       u = (lat - lat_extend(j)) / (lat_extend(j+1) - lat_extend(j))
 
-    end subroutine find_stencil_
+    end subroutine find_stencil_4
 
     subroutine find_stencil_16(lon, lat, is_, js_)
       use grid_module, only: pole_regrid
@@ -166,7 +156,7 @@ module interpolate16_module
       integer(8) :: tmpi(4), tmpj(4)
       integer(8) :: i
 
-      call  find_stencil_(lon, lat, tmpi, tmpj)
+      call  find_stencil_4(lon, lat, tmpi, tmpj)
 
       is_(7) = tmpi(1); js_(7) = tmpj(1)
       is_(6) = tmpi(2); js_(6) = tmpj(2)
@@ -233,7 +223,7 @@ module interpolate16_module
       integer(8) :: k
       real(8) :: dlat
   
-      call find_stencil_(lon, lat, xs, ys)
+      call find_stencil_4(lon, lat, xs, ys)
 
       dlat = lat_extend(ys(4)) - lat_extend(ys(1))
       do k = 1, 4

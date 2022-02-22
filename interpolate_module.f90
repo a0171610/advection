@@ -412,6 +412,7 @@ module interpolate_module
   
     end subroutine find_stencil
 
+    ! find_stencil関数と違って、返り値を極に関して丸めている
     subroutine find_stencil_(lon, lat, is_, js_)
       use grid_module, only: pole_regrid
       implicit none
