@@ -135,7 +135,7 @@ contains
 
     ! dF/dlon
     call legendre_synthesis_dlon(sphi, dgphi)
-    call bicubic_interpolation_set(dgphi) 
+    call bicubic_interpolation_set(dgphi)
     call interpolate16_set(dgphi)
     call interpolate16_setd(gphix, gphiy, gphixy)
     gphim(:, :) = 0.0d0
@@ -202,7 +202,7 @@ contains
         end do
       end do
     end do
-        
+
   end subroutine  set_niuv
 
   subroutine bicubic_interpolation_set(f)
@@ -213,7 +213,7 @@ contains
     real(8), intent(in) :: f(nlon, nlat)
 
     call legendre_analysis(f, sphi1)
-    call legendre_synthesis_dlat(sphi1, gphix)
+    call legendre_synthesis_dlon(sphi1, gphix)
     call legendre_synthesis_dlat(sphi1, gphiy)
     call legendre_synthesis_dlonlat(sphi1, gphixy)
     do j = 1, nlat
