@@ -71,7 +71,7 @@ module interpolate16_module
       call find_stencil_16(lon, lat, lon_g, lat_g)
 
       do i = 1, 16
-          dist(i) = 1.0d0 / (orthodrome(lon, lat, longitudes(lon_g(i)), latitudes(lat_g(i))))
+          dist(i) = 1.0d0 / (orthodrome(lon, lat, longitudes(lon_g(i)), latitudes(lat_g(i))) ** 2)
       end do
 
       dist_sum = sum(dist(:))
@@ -148,36 +148,36 @@ module interpolate16_module
 
     end subroutine find_stencil_4
 
-    subroutine find_stencil_16(lon, lat, is_, js_)
+    subroutine find_stencil_16(lon, lat, is, js)
       use grid_module, only: pole_regrid
       implicit none
       real(8), intent(in) :: lon, lat
-      integer(8), intent(out) :: is_(16), js_(16)
+      integer(8), intent(out) :: is(16), js(16)
       integer(8) :: tmpi(4), tmpj(4)
       integer(8) :: i
 
       call  find_stencil_4(lon, lat, tmpi, tmpj)
 
-      is_(7) = tmpi(1); js_(7) = tmpj(1)
-      is_(6) = tmpi(2); js_(6) = tmpj(2)
-      is_(11) = tmpi(3); js_(11) = tmpj(3)
-      is_(10) = tmpi(4); js_(10) = tmpj(4)
+      is(7) = tmpi(1); js(7) = tmpj(1)
+      is(6) = tmpi(2); js(6) = tmpj(2)
+      is(11) = tmpi(3); js(11) = tmpj(3)
+      is(10) = tmpi(4); js(10) = tmpj(4)
 
-      is_(1) = is_(7) - 1; js_(1) = js_(7) - 1
-      is_(2) = is_(7); js_(2) = js_(7) - 1
-      is_(3) = is_(6); js_(3) = js_(7) - 1
-      is_(4) = is_(6) + 1; js_(4) = js_(7) - 1
-      is_(5) = is_(6) + 1; js_(5) = js_(6)
-      is_(8) = is_(7) - 1; js_(8) = js_(6)
-      is_(9) = is_(7) - 1; js_(9) = js_(10)
-      is_(12) = is_(6) + 1; js_(12) = js_(10)
-      is_(13) = is_(6) + 1; js_(13) = js_(10) + 1
-      is_(14) = is_(6); js_(14) = js_(10) + 1
-      is_(15) = is_(7); js_(15) = js_(10) + 1
-      is_(16) = is_(7) - 1; js_(16) = js_(10) + 1
+      is(1) = is(7) - 1; js(1) = js(7) - 1
+      is(2) = is(7); js(2) = js(7) - 1
+      is(3) = is(6); js(3) = js(7) - 1
+      is(4) = is(6) + 1; js(4) = js(7) - 1
+      is(5) = is(6) + 1; js(5) = js(6)
+      is(8) = is(7) - 1; js(8) = js(6)
+      is(9) = is(7) - 1; js(9) = js(10)
+      is(12) = is(6) + 1; js(12) = js(10)
+      is(13) = is(6) + 1; js(13) = js(10) + 1
+      is(14) = is(6); js(14) = js(10) + 1
+      is(15) = is(7); js(15) = js(10) + 1
+      is(16) = is(7) - 1; js(16) = js(10) + 1
 
       do i = 1, 16
-        call pole_regrid(is_(i), js_(i))
+        call pole_regrid(is(i), js(i))
       end do
 
     end subroutine find_stencil_16
