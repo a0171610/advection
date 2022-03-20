@@ -4,7 +4,7 @@ module direction_module
     gu, gv, gphi, gphi_initial, sphi_old, sphi, longitudes=>lon, latitudes=>lat, wgt
   use field_module, only : X, Y
   use mass_module, only: mass_correct
-  use time_module, only: conserve
+  use time_module, only: conserve, local_conserve
   private
   
   integer(8), dimension(:, :), allocatable, private :: pa, qa, pb, qb, pc, qc, pd, qd
@@ -111,15 +111,28 @@ contains
 
     integer(8) :: i, j, m
     real(8), intent(in) :: dt
+    real(8) :: sum_tmp
 
     call find_points(gu, gv, 0.5d0*dt, midlonA, midlatA, deplon, deplat)
     ! dtに0.5をかけているのは引数のdtが最初のステップ以外は2.0*deltatを渡しているから
 
     do i = 1, nlon
-        do j = 1, nlat
-            call interpolate_bilinear_ratio(deplon(i, j), deplat(i, j), A(i, j), B(i, j), C(i, j), D(i, j))
-        end do
+      do j = 1, nlat
+        call interpolate_bilinear_ratio(deplon(i, j), deplat(i, j), A(i, j), B(i, j), C(i, j), D(i, j))
+      end do
     end do
+
+    if (local_conserve) then
+      do i = 2, nlon
+        do j = 2, nlat
+          sum_tmp = A(i, j) + B(i, j - 1) + C(i - 1, j - 1) + D(i - 1, j)
+          A(i, j) = A(i , j) / sum_tmp
+          B(i, j - 1) = B(i, j - 1) / sum_tmp
+          C(i - 1, j - 1) = C(i - 1, j - 1) /sum_tmp
+          D(i - 1, j) = D(i - 1, j) / sum_tmp 
+        end do
+      end do
+    endif
 
     call set_niuv(dt)
 
@@ -186,7 +199,7 @@ contains
 ! time step
     call legendre_analysis(gphi, sphi1)
     do m = 0, ntrunc
-      sphi_old(m : ntrunc, m) = sphi(m : ntrunc, m)       
+      sphi_old(m : ntrunc, m) = sphi(m : ntrunc, m)
       sphi(m : ntrunc, m) = sphi1(m : ntrunc, m)
     enddo
 
