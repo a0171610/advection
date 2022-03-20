@@ -101,6 +101,7 @@ contains
   end subroutine direction_timeint
 
   subroutine update(dt)
+    use grid_module, only: lat_search
     use upstream_module, only: find_points
     use legendre_transform_module, only: legendre_analysis, legendre_synthesis, &
         legendre_synthesis_dlon, legendre_synthesis_dlat
@@ -109,7 +110,7 @@ contains
     use interpolate_module, only: interpolate_dist, interpolate_dist_ratio
     implicit none
 
-    integer(8) :: i, j, m
+    integer(8) :: i, j, m, ilat
     real(8), intent(in) :: dt
     real(8) :: sum_tmp
 
@@ -125,11 +126,12 @@ contains
     if (local_conserve) then
       do i = 2, nlon
         do j = 2, nlat
+          ilat = lat_search(deplat(i, j))
           sum_tmp = A(i, j) + B(i, j - 1) + C(i - 1, j - 1) + D(i - 1, j)
-          A(i, j) = A(i , j) / sum_tmp
-          B(i, j - 1) = B(i, j - 1) / sum_tmp
-          C(i - 1, j - 1) = C(i - 1, j - 1) /sum_tmp
-          D(i - 1, j) = D(i - 1, j) / sum_tmp 
+          A(i, j) = A(i , j) * wgt(ilat) / (sum_tmp * wgt(j))
+          B(i, j - 1) = B(i, j - 1) * wgt(ilat) / (sum_tmp * wgt(j))
+          C(i - 1, j - 1) = C(i - 1, j - 1) * wgt(ilat) / (sum_tmp * wgt(j))
+          D(i - 1, j) = D(i - 1, j) * wgt(ilat) / (sum_tmp * wgt(j))
         end do
       end do
     endif
