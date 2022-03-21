@@ -4,7 +4,7 @@ module nisl_module
     gu, gv, gphi, gphi_initial, sphi_old, sphi, longitudes=>lon, latitudes=>lat, wgt
   use field_module, only : X, Y
   use mass_module, only: mass_correct
-  use time_module, only: conserve
+  use time_module, only: conserve, velocity
   private
   
   integer(8), allocatable, private :: p(:,:), q(:,:)
@@ -53,7 +53,7 @@ contains
           write(11,*) X(i, j), Y(i, j), gphi(i, j)
       end do        
     end do
-    call update(deltat)
+    call update(0.5d0*deltat, deltat)
 
   end subroutine nisl_init
 
@@ -75,7 +75,7 @@ contains
     integer(8) :: i, j, k
 
     do i = 2, nstep
-      call update(2.0d0*deltat)
+      call update((i-1)*deltat, 2.0d0*deltat)
       write(*, *) 'step = ', i, "maxval = ", maxval(gphi), 'minval = ', minval(gphi)
       if ( mod(i, hstep) == 0 ) then
         do j = 1, nlon
@@ -89,16 +89,26 @@ contains
     
   end subroutine nisl_timeint
 
-  subroutine update(dt)
+  subroutine update(t, dt)
     use uv_module, only: uv_nodiv, uv_div
     use upstream_module, only: find_points
     use legendre_transform_module, only: legendre_analysis, legendre_synthesis, &
         legendre_synthesis_dlon, legendre_synthesis_dlat, legendre_synthesis_dlonlat
     use interpolate_module, only: interpolate_set, interpolate_bilinear, interpolate_setd, interpolate_bicubic
+    use interpolate_module, only: interpolate_setuv
     implicit none
 
     integer(8) :: i, j, m
-    real(8), intent(in) :: dt
+    real(8), intent(in) :: t, dt
+
+    select case(velocity)
+    case("nodiv ")
+      call uv_nodiv(t,longitudes,latitudes,gu,gv)
+    case("div   ")
+      call uv_div(t,longitudes,latitudes,gu,gv)
+    end select
+
+    call interpolate_setuv(gu, gv)
 
     call find_points(gu, gv, 0.5d0*dt, midlon, midlat, deplon, deplat)   ! dtに0.5をかけているのは引数のdtが最初のステップ以外は2.0*deltatを渡しているから
     call set_niuv(dt)
@@ -158,6 +168,7 @@ contains
   subroutine set_niuv(dt)
     use math_module, only: math_pi, pi2=>math_pi2
     use sphere_module, only: xyz2uv, lonlat2xyz
+    use interpolate_module, only: interpolate_bilinearuv
     implicit none
 
     real(8), intent(in) :: dt

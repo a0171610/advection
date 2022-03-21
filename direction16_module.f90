@@ -4,7 +4,7 @@ module direction16_module
     gu, gv, gphi, gphi_initial, sphi_old, sphi, longitudes=>lon, latitudes=>lat, wgt
   use field_module, only : X, Y
   use mass_module, only: mass_correct
-  use time_module, only: conserve
+  use time_module, only: conserve, velocity
   private
   
   integer(8), dimension(:, :, :), allocatable, private :: p, q
@@ -58,7 +58,7 @@ contains
           write(11,*) X(i, j), Y(i, j), gphi(i, j)
       end do        
     end do
-    call update(deltat)
+    call update(0.5d0 * deltat, deltat)
     write(*, *) 'step = 1 ', "maxval = ", maxval(gphi), 'minval = ', minval(gphi)
 
   end subroutine direction16_init
@@ -81,7 +81,7 @@ contains
     integer(8) :: i, j, k
 
     do i = 2, nstep
-      call update(2.0d0*deltat)
+      call update((i-1)*deltat, 2.0d0*deltat)
       write(*, *) 'step = ', i, "maxval = ", maxval(gphi), 'minval = ', minval(gphi)
       if ( mod(i, hstep) == 0 ) then
         do j = 1, nlon
@@ -95,7 +95,7 @@ contains
     
   end subroutine direction16_timeint
 
-  subroutine update(dt)
+  subroutine update(t, dt)
     use upstream_module, only: find_points
     use legendre_transform_module, only: legendre_analysis, legendre_synthesis, &
         legendre_synthesis_dlon, legendre_synthesis_dlat
@@ -105,8 +105,14 @@ contains
     implicit none
 
     integer(8) :: i, j, m, k
-    real(8), intent(in) :: dt
+    real(8), intent(in) :: t, dt
 
+    select case(velocity)
+    case("nodiv ")
+      call uv_nodiv(t,longitudes,latitudes,gu,gv)
+    case("div   ")
+      call uv_div(t,longitudes,latitudes,gu,gv)
+    end select
     call find_points(gu, gv, 0.5*dt, midlon(1,:,:), midlat(1,:,:), deplon, deplat)
     ! dtに0.5をかけているのは引数のdtが最初のステップ以外は2.0*deltatを渡しているから
 

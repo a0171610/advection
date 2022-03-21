@@ -4,7 +4,7 @@ module direction_module
     gu, gv, gphi, gphi_initial, sphi_old, sphi, longitudes=>lon, latitudes=>lat, wgt
   use field_module, only : X, Y
   use mass_module, only: mass_correct
-  use time_module, only: conserve, local_conserve
+  use time_module, only: conserve, local_conserve, velocity
   private
   
   integer(8), dimension(:, :), allocatable, private :: pa, qa, pb, qb, pc, qc, pd, qd
@@ -61,7 +61,7 @@ contains
           write(11,*) X(i, j), Y(i, j), gphi(i, j)
       end do        
     end do
-    call update(deltat)
+    call update(0.5d0*deltat, deltat)
     write(*, *) 'step = 1 ', "maxval = ", maxval(gphi), 'minval = ', minval(gphi)
 
   end subroutine direction_init
@@ -86,7 +86,7 @@ contains
     integer(8) :: i, j, k
 
     do i = 2, nstep
-      call update(2.0d0*deltat)
+      call update((i-1)*deltat, 2.0d0*deltat)
       write(*, *) 'step = ', i, "maxval = ", maxval(gphi), 'minval = ', minval(gphi)
       if ( mod(i, hstep) == 0 ) then
         do j = 1, nlon
@@ -100,22 +100,31 @@ contains
     
   end subroutine direction_timeint
 
-  subroutine update(dt)
+  subroutine update(t, dt)
+    use uv_module, only: uv_nodiv, uv_div
     use grid_module, only: lat_search
     use upstream_module, only: find_points
     use legendre_transform_module, only: legendre_analysis, legendre_synthesis, &
         legendre_synthesis_dlon, legendre_synthesis_dlat
     use interpolate_module, only: interpolate_set, interpolate_setd, find_stencil_
     use interpolate_module, only: interpolate_bicubic, interpolate_bilinear, interpolate_bilinear_ratio
-    use interpolate_module, only: interpolate_dist, interpolate_dist_ratio
+    use interpolate_module, only: interpolate_dist, interpolate_dist_ratio, interpolate_setuv
     implicit none
 
     integer(8) :: i, j, m, ilat
-    real(8), intent(in) :: dt
+    real(8), intent(in) :: t, dt
     real(8) :: sum_tmp
 
+    select case(velocity)
+    case("nodiv")
+      call uv_nodiv(t,longitudes,latitudes,gu,gv)
+    case("div")
+      call uv_div(t,longitudes,latitudes,gu,gv)
+    end select
     call find_points(gu, gv, 0.5d0*dt, midlonA, midlatA, deplon, deplat)
     ! dtに0.5をかけているのは引数のdtが最初のステップ以外は2.0*deltatを渡しているから
+
+    call interpolate_setuv(gu, gv)
 
     do i = 1, nlon
       do j = 1, nlat
