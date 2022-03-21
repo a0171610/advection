@@ -1,6 +1,7 @@
 module analysis_module
-  use grid_module, only: gphi, gphi_initial, lat, wgt
+  use grid_module, only: gphi, gphi_initial, lat, wgt, lon, ntrunc
   use field_module, only: X, Y
+  use legendre_transform_module, only: legendre_analysis
   implicit none
 
 contains
@@ -9,6 +10,8 @@ contains
     implicit none
     integer(8) :: i, j, nlon, nlat
     real(8), allocatable :: w(:, :)
+    real(8), allocatable :: l1(:, :), l2(:, :)
+    complex(8), allocatable :: l1_t(:, :), l2_t(:, :)
     real(8) :: dq, dqp
     real(8) :: sum_g1, sum_g2
 
@@ -23,7 +26,7 @@ contains
     open(10, file="log.txt")
     do i = 1, nlon
       do j = 1, nlat
-        write(10,*) X(i, j), Y(i, j), gphi(i, j)
+        write(10,*) lon(i), lat(j), gphi(i, j)
       enddo
     enddo
     close(10)
@@ -63,5 +66,20 @@ contains
         end do
     end do
     write(*,*) "initial global mass sum", sum_g1, "final global mass sum", sum_g2
+
+    ! l2ノルムを求める
+    allocate(l1(nlon, nlat), l2(nlon, nlat))
+    allocate(l1_t(0:ntrunc,0:ntrunc), l2_t(0:ntrunc,0:ntrunc))
+    do i = 1, nlon
+      do j = 1, nlat
+        l1(i, j) = (gphi(i, j) - gphi_initial(i, j)) ** 2
+        l2(i, j) = gphi_initial(i, j) ** 2
+      end do
+    end do
+
+    call legendre_analysis(l1, l1_t)
+    call legendre_analysis(l2, l2_t)
+
+    write(*,*) "l2 norm = ", sqrt(l1_t(0, 0) / l2_t(0, 0))
   end subroutine error_log
 end module analysis_module
