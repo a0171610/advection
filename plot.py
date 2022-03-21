@@ -14,12 +14,8 @@ for i in range(n):
     Y[i] = text[i].split()[1]
     G[i] = text[i].split()[2]
 print(max(G))
-fig = plt.figure(figsize=(8,8))
-ax = fig.add_subplot(111)
-plt.xlim([0.0, 2.0])
-plt.ylim([-1.0, 1.0])
-cntr = ax.tricontour(X, Y, G, levels=[10,30,50,70,90])
-ax.clabel(cntr)
+fig, ax = plt.subplots(figsize=(10,5))
+cntr = ax.tricontourf(X, Y, G, 14, cmap="jet", levels=np.linspace(0.05,1.05, 11))
+fig.colorbar(cntr, ax=ax)
 ax.grid()
-ax.set_title("t=120h")
 plt.show()
