@@ -182,7 +182,6 @@ contains
     use sphere_module, only: xyz2uv, lonlat2xyz
     use uv_module, only: uv_sbody_calc
     use interpolate16_module, only: find_stencil_16
-    use upstream_module, only: calc_niuv
     implicit none
 
     real(8), intent(in) :: dt
@@ -228,5 +227,47 @@ contains
     gum(:, :, :) = 0.0d0
     gvm(:, :, :) = 0.0d0
   end subroutine set_velocity_zero
+
+  ! Ritchie1987 式(45)のu^* - Uをgumに詰める(gvmも)
+  subroutine calc_niuv(dt, p1, q1, lon, lat, midlon1, midlat1, gum1, gvm1)
+    use grid_module, only: latitudes => lat, longitudes => lon
+    use math_module, only: math_pi, pi2=>math_pi2
+    use sphere_module, only: xyz2uv, lonlat2xyz
+    use uv_module, only: uv_sbody_calc
+    implicit none
+    real(8), intent(in) :: dt
+    integer(8), intent(in) :: p1, q1
+    real(8), intent(in) :: lon, lat
+    real(8), intent(out) :: gum1, gvm1
+    real(8), intent(out) :: midlon1, midlat1
+
+    real(8) :: xg, yg, zg, xr, yr, zr, xm, ym, zm, xdot, ydot, zdot, lon_grid, lat_grid, u, v, b
+
+
+    lon_grid = longitudes(p1)
+    lat_grid = latitudes(q1)
+    call lonlat2xyz(lon_grid, lat_grid, xr, yr, zr)
+    ! arrival points
+    call lonlat2xyz(lon, lat, xg, yg, zg)
+
+    b = 1.0d0 / sqrt( 2.0d0 * (1.0d0 + (xg*xr + yg*yr + zg*zr)) ) ! Ritchie1987 式(44)
+    xm = b * (xg + xr)
+    ym = b * (yg + yr)
+    zm = b * (zg + zr)
+    midlon1 = modulo(atan2(ym, xm) + pi2, pi2)
+    midlat1 = asin(zm)
+
+    xdot = (xg - xr) / dt
+    ydot = (yg - yr) / dt
+    zdot = (zg - zr) / dt
+    call xyz2uv(xdot, ydot, zdot, midlon1, midlat1, u, v)  !Richie1987式(49)
+    gum1 = gum1 + u
+    gvm1 = gvm1 + v
+
+    call uv_sbody_calc(midlon1, midlat1, u, v)
+    gum1 = gum1 - u
+    gvm1 = gvm1 - v
+
+  end subroutine calc_niuv
 
 end module direction16_module
