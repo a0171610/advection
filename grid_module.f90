@@ -90,10 +90,9 @@ end subroutine pole_regrid
     implicit none
     real(8), intent(in) :: latitude
     integer(8) :: ans, i
-
     ans = nlat
     do i = 1, nlat - 1
-      if ( lat(i) < latitude .and. latitude < lat(i + 1) ) then
+      if ( lat(i + 1) < latitude .and. latitude < lat(i) ) then
         ans = i
       endif
     end do
