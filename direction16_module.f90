@@ -102,6 +102,7 @@ contains
     use interpolate16_module, only: interpolate16_set, interpolate16_setd, find_stencil_16
     use interpolate16_module, only: interpolate16_bicubic, interpolate16_dist, interpolate16_dist_ratio
     use interpolate16_module, only: interpolate16_dist, interpolate16_dist_ratio
+    use uv_module, only: uv_div, uv_nodiv
     implicit none
 
     integer(8) :: i, j, m, k
