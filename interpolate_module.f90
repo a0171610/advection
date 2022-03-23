@@ -1,6 +1,6 @@
 module interpolate_module
   ! interpolate in a stencil
-    use grid_module, only: latitudes=>lat, wgt, longitudes=>lon
+    use grid_module, only: latitudes=>lat, wgt, longitudes=>lon, nlon, nlat
     use sphere_module, only: lon2i, lat2j
     implicit none
     private
@@ -10,6 +10,8 @@ module interpolate_module
     real(8), private :: u, t, dlon                            ! tとuは線分比
     real(8), dimension(:), allocatable, public :: lon_extend, lat_extend
     real(8), dimension(:,:), allocatable, private :: ff, ffx, ffy, ffxy, fu, fv, ffxl, ffyl
+    integer(8), dimension(:, :, :), allocatable, public :: record_i, record_j, record_d
+    integer(8), dimension(:, :), allocatable, private :: record_count
   
     public :: interpolate_init, interpolate_clean, &
               interpolate_set, interpolate_setuv, &
@@ -18,7 +20,7 @@ module interpolate_module
               interpolate_polin2, interpolate_polin2uv, &
               interpolate_bicubic, interpolate_linpol, &
               interpolate_diff, interpolate_bilinear_ratio, find_stencil_, &
-              interpolate_dist, interpolate_dist_ratio
+              interpolate_dist, interpolate_dist_ratio, record_departure_point
   
   contains
   
@@ -43,7 +45,8 @@ module interpolate_module
       allocate(lon_extend(nx1:nx2), lat_extend(ny1:ny2), ff(nx1:nx2,ny1:ny2), &
                ffx(nx1:nx2,ny1:ny2), ffy(nx1:nx2,ny1:ny2), ffxy(nx1:nx2,ny1:ny2), &
                ffxl(nx1:nx2,ny1:ny2), ffyl(nx1:nx2,ny1:ny2), &
-               fu(nx1:nx2,ny1:ny2),fv(nx1:nx2,ny1:ny2))
+               fu(nx1:nx2,ny1:ny2),fv(nx1:nx2,ny1:ny2), record_i(nlon, nlat, 60), &
+               record_j(nlon, nlat, 60), record_d(nlon, nlat, 60), record_count(nlon, nlat))
   
       dlon = pi2/nx
       do i=nx1, nx2
@@ -438,5 +441,36 @@ module interpolate_module
       u = (lat - lat_extend(j)) / (lat_extend(j+1) - lat_extend(j))
 
     end subroutine find_stencil_
+
+    subroutine record_departure_point(deplon, deplat)
+      use grid_module, only: pole_regrid
+      implicit none
+      real(8), intent(in) :: deplon(nlon, nlat), deplat(nlon, nlat)
+      integer(8) :: i, j, k
+
+      record_i(:, :, :) = 0
+      record_j(:, :, :) = 0
+      record_d(:, :, :) = 0
+      record_count(:, :) = 0
+
+      do i = 1, nlon
+        do j = 1, nlat
+          call find_stencil(deplon(i, j), deplat(i, j))
+         ! write(*,*) deplon(i, j), deplat(i, j), is(1), js(1), longitudes(is(1)), latitudes(js(1))
+          do k = 1, 4
+            call pole_regrid(is(k), js(k))
+            record_count(is(k), js(k)) = record_count(is(k), js(k)) + 1
+            record_i(is(k), js(k), record_count(is(k), js(k))) = i
+            record_j(is(k), js(k), record_count(is(k), js(k))) = j
+            record_d(is(k), js(k), record_count(is(k), js(k))) = k
+            !write(*,*) is(k), js(k), record_count(is(k), js(k))
+            if (record_count(is(k), js(k)) > 5) then
+            !  write(*,*) "RECORD COUNT ERROR"
+            endif
+          end do
+        end do
+      end do
+
+    end subroutine record_departure_point
 
   end module interpolate_module

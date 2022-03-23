@@ -101,7 +101,7 @@ contains
   end subroutine direction_timeint
 
   subroutine update(t, dt)
-    use uv_module, only: uv_nodiv, uv_div
+    use uv_module, only: uv_nodiv, uv_div, uv_sbody
     use grid_module, only: lat_search
     use upstream_module, only: find_points
     use legendre_transform_module, only: legendre_analysis, legendre_synthesis, &
@@ -109,17 +109,22 @@ contains
     use interpolate_module, only: interpolate_set, interpolate_setd, find_stencil_
     use interpolate_module, only: interpolate_bicubic, interpolate_bilinear, interpolate_bilinear_ratio
     use interpolate_module, only: interpolate_dist, interpolate_dist_ratio, interpolate_setuv
+    use interpolate_module, only: record_departure_point, record_i, record_j, record_d
     implicit none
 
-    integer(8) :: i, j, m, ilat
+    integer(8) :: i, j, k, dir, m, ilat
     real(8), intent(in) :: t, dt
-    real(8) :: sum_tmp
+    real(8) :: sum_tmp = 0.0d0
 
     select case(velocity)
     case("nodiv")
       call uv_nodiv(t,longitudes,latitudes,gu,gv)
     case("div")
       call uv_div(t,longitudes,latitudes,gu,gv)
+    case("sbody")
+      call uv_sbody(longitudes, latitudes, gu, gv)
+    case default
+      print *, "No matching model for", velocity
     end select
     call find_points(gu, gv, 0.5d0*dt, midlonA, midlatA, deplon, deplat)
     ! dtに0.5をかけているのは引数のdtが最初のステップ以外は2.0*deltatを渡しているから
@@ -133,14 +138,36 @@ contains
     end do
 
     if (local_conserve) then
+      call record_departure_point(deplon, deplat)
       do i = 2, nlon
         do j = 2, nlat
           ilat = lat_search(deplat(i, j))
-          sum_tmp = A(i, j) + B(i, j - 1) + C(i - 1, j - 1) + D(i - 1, j)
-          A(i, j) = A(i , j) * wgt(ilat) / (sum_tmp * wgt(j))
-          B(i, j - 1) = B(i, j - 1) * wgt(ilat) / (sum_tmp * wgt(j))
-          C(i - 1, j - 1) = C(i - 1, j - 1) * wgt(ilat) / (sum_tmp * wgt(j))
-          D(i - 1, j) = D(i - 1, j) * wgt(ilat) / (sum_tmp * wgt(j))
+          !sum_tmp = A(i, j) + B(i, j - 1) + C(i - 1, j - 1) + D(i - 1, j)
+          do k = 1, 5
+            dir = record_d(i, j, k)
+            if (dir == 1) then
+              sum_tmp = sum_tmp + A(record_i(i, j, k), record_j(i, j, k))
+            else if (dir == 2) then
+              sum_tmp = sum_tmp + B(record_i(i, j, k), record_j(i, j, k))
+            else if (dir == 3) then
+              sum_tmp = sum_tmp + C(record_i(i, j, k), record_j(i, j, k))
+            else if (dir == 4) then
+              sum_tmp = sum_tmp + D(record_i(i, j, k), record_j(i, j, k))
+            endif
+          end do
+          if (dir == 1) then
+            A(record_i(i, j, k), record_j(i, j, k)) = A(record_i(i, j, k), record_j(i, j, k)) * wgt(ilat) / (wgt(i) * sum_tmp)
+          else if (dir == 2) then
+            B(record_i(i, j, k), record_j(i, j, k)) = B(record_i(i, j, k), record_j(i, j, k)) * wgt(ilat) / (wgt(i) * sum_tmp)
+          else if (dir == 3) then
+            C(record_i(i, j, k), record_j(i, j, k)) = C(record_i(i, j, k), record_j(i, j, k)) * wgt(ilat) / (wgt(i) * sum_tmp)
+          else if (dir == 4) then
+            D(record_i(i, j, k), record_j(i, j, k)) = D(record_i(i, j, k), record_j(i, j, k)) * wgt(ilat) / (wgt(i) * sum_tmp)
+          endif
+          !A(i, j) = A(i , j) * wgt(ilat) / wgt(j)
+          !!B(i, j - 1) = B(i, j - 1) * wgt(ilat) / wgt(j)
+          !C(i - 1, j - 1) = C(i - 1, j - 1) * wgt(ilat) / wgt(j)
+          !D(i - 1, j) = D(i - 1, j) * wgt(ilat) / wgt(j)
         end do
       end do
     endif
@@ -282,6 +309,7 @@ contains
   ! Ritchie1987 式(45)のu^* - Uをgumに詰める(gvmも)
   subroutine calc_niuv(dt, p, q, lon, lat, midlon, midlat, gum, gvm)
     use grid_module, only: latitudes => lat, longitudes => lon
+    use interpolate_module, only: interpolate_bilinearuv
     use math_module, only: math_pi, pi2=>math_pi2
     use sphere_module, only: xyz2uv, lonlat2xyz
     use uv_module, only: uv_sbody_calc
@@ -315,7 +343,8 @@ contains
     gum = gum + u
     gvm = gvm + v
 
-    call uv_sbody_calc(midlon, midlat, u, v)
+    call interpolate_bilinearuv(midlon, midlat, u, v)
+
     gum = gum - u
     gvm = gvm - v
 
