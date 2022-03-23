@@ -3,6 +3,7 @@ module semilag_module
   use grid_module, only: nlon, nlat, ntrunc, &
     gu, gv, gphi, sphi_old, sphi, latitudes=>lat, lon, coslatr, wgt
   use field_module, only : X, Y
+  use time_module, only: velocity
   private
   
   real(8), dimension(:,:), allocatable, private :: &
@@ -59,7 +60,7 @@ contains
     integer(8) :: i, j, k
 
     do i=1, nstep
-      call update(deltat)
+      call update((i-1)*deltat, deltat)
       write(*, *) "step=", i, "maxval = ", maxval(gphi), 'minval = ', minval(gphi)
       if ( mod(i, hstep) == 0 ) then
         do j = 1, nlon
@@ -86,7 +87,7 @@ contains
 
   end subroutine semilag_timeint
 
-  subroutine update(dt)
+  subroutine update(t, dt)
     use math_module, only: &
       pi=>math_pi, pir=>math_pir, pih=>math_pih
     use upstream_module, only: find_points
@@ -100,13 +101,22 @@ contains
         legendre_synthesis_dlon, legendre_synthesis_dlat, legendre_synthesis_dlonlat
     implicit none
 
-    real(8), intent(in) :: dt
+    real(8), intent(in) :: t, dt
 
     integer(8) :: i, j, m, n
     real(8) :: eps, dlonr
     real(8), dimension(nlon) :: gphitmp
 
-    call uv_sbody(lon,latitudes,gu,gv)
+    select case(velocity)
+    case("nodiv")
+      call uv_nodiv(t,lon,latitudes,gu,gv)
+    case("div")
+      call uv_div(t,lon,latitudes,gu,gv)
+    case("sbody")
+      call uv_sbody(lon, latitudes, gu, gv)
+    case default
+      print *, "No matching model for", velocity
+    end select
     call find_points(gu, gv, 0.5d0*dt, midlon, midlat, deplon, deplat)
 
     call legendre_synthesis(sphi_old,gphi_old)
