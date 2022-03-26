@@ -19,7 +19,7 @@ contains
     use init_module, only: &
       init_ghill, init_ghill2, init_cbell2, init_scyli2, init_ccbel2
     use uv_module, only: uv_sbody, uv_nodiv, uv_div
-    use time_module, only: velocity
+    use time_module, only: velocity, field
     implicit none
 
 
@@ -38,7 +38,22 @@ contains
     coslat(:) = cos(lat(:))
     coslatr(:) = 1.0d0 / coslat(:)
 
-    call init_cbell2(lon,lat,gphi)
+    select case(field)
+      case("ghill")
+        call init_ghill(lon,lat,gphi)
+      case("ghill2")
+        call init_ghill2(lon,lat,gphi)
+      case("cbell2")
+        call init_cbell2(lon,lat,gphi)
+      case("scyli2")
+        call init_scyli2(lon,lat,gphi)
+      case("ccbel2")
+        call init_ccbel2(lon,lat,gphi)
+      case default
+        print *, "No matching initial field"
+      stop
+    end select
+
     gphi_initial(:, :) = gphi(:, :)
     call legendre_analysis(gphi, sphi)
     do m = 0, ntrunc
