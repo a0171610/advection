@@ -312,7 +312,6 @@ contains
     use interpolate_module, only: interpolate_bilinearuv
     use math_module, only: math_pi, pi2=>math_pi2
     use sphere_module, only: xyz2uv, lonlat2xyz
-    use uv_module, only: uv_sbody_calc
     implicit none
     real(8), intent(in) :: dt
     integer(8), intent(in) :: p, q

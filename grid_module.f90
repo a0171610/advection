@@ -19,6 +19,7 @@ contains
     use init_module, only: &
       init_ghill, init_ghill2, init_cbell2, init_scyli2, init_ccbel2
     use uv_module, only: uv_sbody, uv_nodiv, uv_div
+    use time_module, only: velocity
     implicit none
 
 
@@ -37,7 +38,7 @@ contains
     coslat(:) = cos(lat(:))
     coslatr(:) = 1.0d0 / coslat(:)
 
-    call init_ghill(lon,lat,gphi)
+    call init_cbell2(lon,lat,gphi)
     gphi_initial(:, :) = gphi(:, :)
     call legendre_analysis(gphi, sphi)
     do m = 0, ntrunc
@@ -46,7 +47,17 @@ contains
       enddo
     enddo
 
-    call uv_sbody(lon, lat, gu, gv)
+    select case(velocity)
+    case("sbody")
+      call uv_sbody(lon, lat, gu, gv)
+    case("nodiv")
+      call uv_nodiv(0.0d0, lon, lat, gu, gv)
+    case("div")
+      call uv_div(0.0d0, lon, lat, gu, gv)
+    case default
+      print *, "No matching initial wind"
+      stop
+  end select
       
 
   end subroutine grid_init
