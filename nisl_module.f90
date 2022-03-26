@@ -168,7 +168,6 @@ contains
   subroutine set_niuv(dt)
     use math_module, only: math_pi, pi2=>math_pi2
     use sphere_module, only: xyz2uv, lonlat2xyz
-    use interpolate_module, only: interpolate_bilinearuv
     implicit none
 
     real(8), intent(in) :: dt
@@ -218,6 +217,7 @@ contains
     use grid_module, only: latitudes => lat, longitudes => lon
     use math_module, only: math_pi, pi2=>math_pi2
     use sphere_module, only: xyz2uv, lonlat2xyz
+    use interpolate_module, only: interpolate_bilinearuv
     use uv_module, only: uv_sbody_calc
     implicit none
     real(8), intent(in) :: dt
@@ -249,7 +249,7 @@ contains
     gum1 = gum1 + u
     gvm1 = gvm1 + v
 
-    call uv_sbody_calc(midlon1, midlat1, u, v)
+    call interpolate_bilinearuv(midlon1, midlat1, u, v)
     gum1 = gum1 - u
     gvm1 = gvm1 - v
 
