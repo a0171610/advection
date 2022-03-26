@@ -1,8 +1,8 @@
 module upstream_module
   ! finds departure and mid-points
     use grid_module, only: latitudes=>lat
-    use interpolate_module, only: interpolate_setuv
-    use interpolate16_module, only: interpolate16_setuv
+    use interpolate_module, only: &
+      interpolate_setuv, interpolate_bilinearuv
     use sphere_module, only: lonlat2xyz, uv2xyz
     implicit none
     private
@@ -14,10 +14,9 @@ module upstream_module
   
   contains
   !! midlon, midlatはdt前の出発点(middle), deplon, deplatは2*dt前
+
     subroutine find_points(u, v, dt, midlon, midlat, deplon, deplat)
       use math_module, only: pi2=>math_pi2
-      use uv_module, only: uv_sbody_calc
-      use time_module, only: model
       implicit none
   
       real(8), dimension(:,:), intent(in) :: u, v
@@ -37,12 +36,7 @@ module upstream_module
       nx = size(u,1)
       ny = size(u,2)
   
-      if (model == "direction1") then
-        call interpolate16_setuv(u, v)
-      else
-        call interpolate_setuv(u, v)
-      endif
-      
+      call interpolate_setuv(u,v)
       do j = 1, ny
         do i = 1, nx
           ! calculate initial values
@@ -52,8 +46,6 @@ module upstream_module
           lat = latitudes(j)
           call lonlat2xyz(lon, lat, xg, yg, zg) ! transform into Cartesian coordinates
           ! r = g as an initial point for the 1st time step, 最初midlat, midlonには格子点上の値が入っている
-          midlat(i, j) = lat
-          midlon(i, j) = lon
           call lonlat2xyz(midlon(i,j), midlat(i,j), x0, y0, z0) 
           step = 1
           do 
@@ -66,7 +58,7 @@ module upstream_module
             ! calculate (lon,lat) from (x,y,z)
             lat = asin(z1)
             lon = modulo(atan2(y1,x1)+pi2,pi2)
-            call uv_sbody_calc(lon, lat, un, vn)
+            call interpolate_bilinearuv(lon, lat, un, vn)
             err = sqrt((x1-x0)*(x1-x0)+(y1-y0)*(y1-y0)+(z1-z0)*(z1-z0)) ! calculate error
             x0 = x1 ! save as the current point
             y0 = y1

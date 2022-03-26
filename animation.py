@@ -30,9 +30,7 @@ plt.title('semi-lag')
 for i in range(step):
     fig = plt.figure(figsize=(8,8))
     ax = fig.add_subplot(111)
-    plt.xlim([-2.5, 2.5])
-    plt.ylim([-2.5, 2.5])
-    im = ax.tricontour(X[i, :], Y[i, :], G[i, :], levels=[5,10,15,20,25,30])
+    im = ax.tricontour(X[i, :], Y[i, :], G[i, :])
     ax.clabel(im)
     add_arts = im.collections
     filename = os.path.join(cdir, "No{}.png".format(i))
