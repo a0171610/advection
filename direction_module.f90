@@ -2,7 +2,6 @@ module direction_module
 
   use grid_module, only: nlon, nlat, ntrunc, &
     gu, gv, gphi, gphi_initial, sphi_old, sphi, longitudes=>lon, latitudes=>lat, wgt
-  use field_module, only : X, Y
   use mass_module, only: mass_correct
   use time_module, only: conserve, local_conserve, velocity
   private
@@ -58,7 +57,7 @@ contains
     open(11, file="animation.txt")
     do i = 1, nlon
       do j = 1, nlat
-          write(11,*) X(i, j), Y(i, j), gphi(i, j)
+          write(11,*) longitudes(i), latitudes(j), gphi(i, j)
       end do        
     end do
     call update(0.5d0*deltat, deltat)
@@ -91,7 +90,7 @@ contains
       if ( mod(i, hstep) == 0 ) then
         do j = 1, nlon
             do k = 1, nlat
-              write(11,*) X(j, k), Y(j, k), gphi(j, k)
+              write(11,*) longitudes(j), latitudes(k), gphi(j, k)
             end do
         end do
       endif

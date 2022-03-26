@@ -187,7 +187,6 @@ contains
   subroutine set_niuv(dt)
     use math_module, only: math_pi, pi2=>math_pi2
     use sphere_module, only: xyz2uv, lonlat2xyz
-    use uv_module, only: uv_sbody_calc
     use interpolate16_module, only: find_stencil_16
     implicit none
 
@@ -240,7 +239,6 @@ contains
     use grid_module, only: latitudes => lat, longitudes => lon
     use math_module, only: math_pi, pi2=>math_pi2
     use sphere_module, only: xyz2uv, lonlat2xyz
-    use uv_module, only: uv_sbody_calc
     implicit none
     real(8), intent(in) :: dt
     integer(8), intent(in) :: p1, q1
@@ -271,7 +269,7 @@ contains
     gum1 = gum1 + u
     gvm1 = gvm1 + v
 
-    call uv_sbody_calc(midlon1, midlat1, u, v)
+    !call uv_sbody_calc(midlon1, midlat1, u, v)
     gum1 = gum1 - u
     gvm1 = gvm1 - v
 
