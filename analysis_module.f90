@@ -12,7 +12,7 @@ contains
     real(8), allocatable :: w(:, :)
     real(8), allocatable :: l1(:, :), l2(:, :)
     complex(8), allocatable :: l1_t(:, :), l2_t(:, :)
-    real(8) :: dq, dqp
+    real(8) :: dq, dqp, rmse
     real(8) :: sum_g1, sum_g2
 
     nlat = size(gphi, 2)
@@ -44,17 +44,28 @@ contains
       write(14,*) lat(i), gphi(1, i) - gphi_initial(1, i)
     end do
 
-    dq = sum(gphi(:, :) - gphi_initial(:, :))
+    dq = sum(gphi(:, :) - gphi_initial(:, :)) / dble(nlat * nlon)
 
     dqp = 0.0d0
     do i = 1, nlon
         do j = 1, nlat
             if(gphi(i, j) > gphi_initial(i, j)) then
               dqp = dqp + gphi(i, j) - gphi_initial(i, j)
+              dqp = dqp / dble(nlon * nlat)
             endif
         end do
     end do
-    write(*,*) '△q = ', dq, '△q+', dqp
+
+    rmse = 0.0d0
+    do i = 1, nlon
+      do j = 1, nlat
+        rmse = rmse + (gphi(i, j) - gphi_initial(i, j)) ** 2
+        rmse = rmse / dble(nlon * nlat)
+      end do
+    end do
+    rmse = sqrt(rmse)
+
+    write(*,*) 'error = ', dq, 'positive error = ', dqp, 'RMSE = ', rmse
 
     sum_g1 = 0.0d0
     sum_g2 = 0.0d0
