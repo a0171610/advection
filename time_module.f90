@@ -6,6 +6,6 @@ module time_module
   real(8), public :: deltat = 21600.0d0, kappa = 0.0d0
 
   character(len=10), public :: &
-    model = "slag", imethod = "sph", velocity = "nodiv", field = "cbell2"
-  logical, public :: conserve = .false., local_conserve = .false.
+    model = "direction", imethod = "sph", velocity = "nodiv", field = "ghill"
+  logical, public :: conserve = .false., local_conserve = .true.
 end module time_module

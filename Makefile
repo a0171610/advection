@@ -23,7 +23,7 @@ $(TARGET) : $(OBJ)
 
 time_module.o: grid_module.o planet_module.o
 glatwgt_module.o : math_module.o
-legendre_transform_module.o : glatwgt_module.o alf_module.o fft_module.o 
+legendre_transform_module.o : glatwgt_module.o alf_module.o fft_module.o
 init_module.o : math_module.o planet_module.o sphere_module.o legendre_transform_module.o uv_module.o time_module.o
 upstream_module.o : sphere_module.o grid_module.o time_module.o interpolate_module.o interpolate16_module.o
 interpolate_module.o : math_module.o grid_module.o sphere_module.o bicubic_module.o polint_module.o

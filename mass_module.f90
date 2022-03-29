@@ -2,7 +2,8 @@ module mass_module
   implicit none
   private
 
-  public :: mass_correct
+  public :: mass_correct, local_mass_record, local_mass_correct
+
 contains
 
   subroutine mass_correct(f, fold, gmax, gmin, w)
@@ -57,5 +58,38 @@ contains
     end do
     
   end subroutine mass_correct
+
+  subroutine local_mass_record(deplon, deplat, A, B, C, D, w_record)
+    use grid_module, only: nlon, nlat, grid_id, pole_regrid
+    implicit none
+
+    integer(8) :: i, j
+    real(8), intent(out) :: w_record(nlon, nlat)
+    real(8), intent(in) :: deplon(nlon, nlat), deplat(nlon, nlat)
+    real(8), intent(in) :: A(nlon, nlat), B(nlon, nlat), C(nlon, nlat), D(nlon, nlat)
+    integer(8) :: lo, la, loA, laA, loB, laB, loC, laC, loD, laD
+
+    w_record(:, :) = 0.0d0
+    do i = 1, nlon
+      do j = 1, nlat
+        call grid_id(deplon(i, j), deplat(i, j), lo, la)
+        loA = lo; laA = la; loB = lo + 1; laB = la; loC = lo + 1; laC = la + 1; loD = lo; laD = la + 1
+        call pole_regrid(loA, laA)
+        call pole_regrid(loB, laB)
+        call pole_regrid(loC, laC)
+        call pole_regrid(loD, laD)
+        w_record(loA, laA) = w_record(loA, laA) + A(i, j)
+        w_record(loB, laB) = w_record(loB, laB) + B(i, j)
+        w_record(loC, laC) = w_record(loC, laC) + C(i, j)
+        w_record(loD, laD) = w_record(loD, laD) + D(i, j)
+      end do
+    end do
+
+  end subroutine local_mass_record
+
+  subroutine local_mass_correct
+    implicit none
+  !TODO: implement
+  end subroutine local_mass_correct
 
 end module

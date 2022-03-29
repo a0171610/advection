@@ -8,7 +8,7 @@ module grid_module
   real(8), dimension(:,:), allocatable, public :: gphi, gphi_initial, gu, gv
   real(8), dimension(:), allocatable, public :: lon, lat, coslat, coslatr, wgt
 
-  public :: grid_init, grid_clean, pole_regrid, lat_search
+  public :: grid_init, grid_clean, pole_regrid, grid_id
 
 contains
 
@@ -111,17 +111,41 @@ contains
     endif
 end subroutine pole_regrid
 
-    ! 入力された緯度に対してそれ以下の最も大きな緯度格子点indexを返す
-  function lat_search(latitude) result(ans)
+  ! 経度lon, 緯度latが与えられた時、 lon(lo1) <= lon < lon(lo2), lat(la1) <= lat < lat(la2) を満たすlo1, lo2, la1, la2を返す
+  subroutine grid_id(long, lati, lo, la)
     implicit none
-    real(8), intent(in) :: latitude
-    integer(8) :: ans, i
-    ans = nlat
-    do i = 1, nlat - 1
-      if ( lat(i + 1) < latitude .and. latitude < lat(i) ) then
-        ans = i
+    real(8), intent(in) :: long, lati
+    integer(8), intent(out) :: lo, la
+    integer(8) :: i
+
+    lo = -1
+    do i = 1, nlon - 1
+      if (lon(i) <= long .and. long < lon(i + 1)) then
+        lo = i
+        exit
       endif
     end do
-  end function lat_search
+
+    if (lo == -1) then
+      lo = nlon
+    endif
+
+    la = -1
+    do i = 1, nlat - 1
+      if (lat(i + 1) <= lati .and. lati <lat(i)) then
+        la = i
+        exit
+      endif
+    end do
+
+    if (la == -1 .and. lati < lat(nlat)) then
+      la = 0
+    endif
+
+    if (la == -1 .and. lat(nlat) < lati) then
+      la = nlat
+    endif
+
+  end subroutine grid_id
 
 end module grid_module

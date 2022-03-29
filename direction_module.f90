@@ -2,7 +2,7 @@ module direction_module
 
   use grid_module, only: nlon, nlat, ntrunc, &
     gu, gv, gphi, gphi_initial, sphi_old, sphi, longitudes=>lon, latitudes=>lat, wgt
-  use mass_module, only: mass_correct
+  use mass_module, only: mass_correct, local_mass_record
   use time_module, only: conserve, local_conserve, velocity
   private
   
@@ -13,7 +13,7 @@ module direction_module
   real(8), dimension(:, :), allocatable, private :: midlonA, midlatA, midlonB, midlatB, midlonC, midlatC, midlonD, midlatD
   real(8), dimension(:, :), allocatable, private :: gumA, gvmA, gumB, gvmB, gumC, gvmC, gumD, gvmD
   real(8), dimension(:, :), allocatable, private :: dgphimA, dgphimB, dgphimC, dgphimD
-  real(8), dimension(:, :), allocatable, private :: gmin, gmax, w
+  real(8), dimension(:, :), allocatable, private :: gmin, gmax, w, w_record
   complex(8), dimension(:,:), allocatable, private :: sphi1
 
   private :: update, bicubic_interpolation_set
@@ -39,7 +39,7 @@ contains
     allocate(guma(nlon, nlat), gvma(nlon, nlat), gumb(nlon, nlat), gvmb(nlon, nlat))
     allocate(gumc(nlon, nlat), gvmc(nlon, nlat), gumd(nlon, nlat), gvmd(nlon, nlat))
     allocate(dgphimA(nlon, nlat), dgphimB(nlon, nlat), dgphimC(nlon, nlat), dgphimD(nlon, nlat))
-    allocate(gphix(nlon, nlat), gphiy(nlon, nlat), gphixy(nlon, nlat))
+    allocate(gphix(nlon, nlat), gphiy(nlon, nlat), gphixy(nlon, nlat), w_record(nlon, nlat))
     if (conserve) then
       allocate(gmax(nlon,nlat),gmin(nlon,nlat),w(nlon,nlat))
       do j=1, nlat
@@ -101,19 +101,18 @@ contains
 
   subroutine update(t, dt)
     use uv_module, only: uv_nodiv, uv_div, uv_sbody
-    use grid_module, only: lat_search
+    use grid_module, only: grid_id, pole_regrid
     use upstream_module, only: find_points
     use legendre_transform_module, only: legendre_analysis, legendre_synthesis, &
         legendre_synthesis_dlon, legendre_synthesis_dlat
     use interpolate_module, only: interpolate_set, interpolate_setd, find_stencil_
     use interpolate_module, only: interpolate_bicubic, interpolate_bilinear, interpolate_bilinear_ratio
     use interpolate_module, only: interpolate_dist, interpolate_dist_ratio, interpolate_setuv
-    use interpolate_module, only: record_departure_point, record_i, record_j, record_d
+    use interpolate_module, only: record_departure_point
     implicit none
 
-    integer(8) :: i, j, k, dir, m, ilat
+    integer(8) :: i, j, m
     real(8), intent(in) :: t, dt
-    real(8) :: sum_tmp = 0.0d0
 
     select case(velocity)
     case("nodiv")
@@ -132,48 +131,18 @@ contains
 
     do i = 1, nlon
       do j = 1, nlat
-        call interpolate_bilinear_ratio(deplon(i, j), deplat(i, j), A(i, j), B(i, j), C(i, j), D(i, j))
+        ! AとDの経度番号がi, BとCの経度番号がi+1, AとBの緯度番号がj, CとDの緯度番号がj+1
+        call interpolate_dist_ratio(deplon(i, j), deplat(i, j), A(i, j), B(i, j), C(i, j), D(i, j))
       end do
     end do
-
-    if (local_conserve) then
-      call record_departure_point(deplon, deplat)
-      do i = 2, nlon
-        do j = 2, nlat
-          ilat = lat_search(deplat(i, j))
-          !sum_tmp = A(i, j) + B(i, j - 1) + C(i - 1, j - 1) + D(i - 1, j)
-          do k = 1, 5
-            dir = record_d(i, j, k)
-            if (dir == 1) then
-              sum_tmp = sum_tmp + A(record_i(i, j, k), record_j(i, j, k))
-            else if (dir == 2) then
-              sum_tmp = sum_tmp + B(record_i(i, j, k), record_j(i, j, k))
-            else if (dir == 3) then
-              sum_tmp = sum_tmp + C(record_i(i, j, k), record_j(i, j, k))
-            else if (dir == 4) then
-              sum_tmp = sum_tmp + D(record_i(i, j, k), record_j(i, j, k))
-            endif
-          end do
-          if (dir == 1) then
-            A(record_i(i, j, k), record_j(i, j, k)) = A(record_i(i, j, k), record_j(i, j, k)) * wgt(ilat) / (wgt(i) * sum_tmp)
-          else if (dir == 2) then
-            B(record_i(i, j, k), record_j(i, j, k)) = B(record_i(i, j, k), record_j(i, j, k)) * wgt(ilat) / (wgt(i) * sum_tmp)
-          else if (dir == 3) then
-            C(record_i(i, j, k), record_j(i, j, k)) = C(record_i(i, j, k), record_j(i, j, k)) * wgt(ilat) / (wgt(i) * sum_tmp)
-          else if (dir == 4) then
-            D(record_i(i, j, k), record_j(i, j, k)) = D(record_i(i, j, k), record_j(i, j, k)) * wgt(ilat) / (wgt(i) * sum_tmp)
-          endif
-          !A(i, j) = A(i , j) * wgt(ilat) / wgt(j)
-          !!B(i, j - 1) = B(i, j - 1) * wgt(ilat) / wgt(j)
-          !C(i - 1, j - 1) = C(i - 1, j - 1) * wgt(ilat) / wgt(j)
-          !D(i - 1, j) = D(i - 1, j) * wgt(ilat) / wgt(j)
-        end do
-      end do
-    endif
 
     call set_niuv(dt)
 
     call legendre_synthesis(sphi_old, gphi_old)
+
+    if (local_conserve) then
+      call local_mass_record(deplon, deplat, A, B, C, D, w_record)
+    endif
 
     if (conserve) then
       gmin(:, :) = min(0.0d0, minval(gphi))
@@ -184,7 +153,7 @@ contains
     call interpolate_set(gphi_old)
     do j = 1, nlat
       do i = 1, nlon
-        call interpolate_bilinear(deplon(i, j), deplat(i, j), gphi(i, j))
+        call interpolate_dist(deplon(i, j), deplat(i, j), gphi(i, j))
       end do
     end do
 
