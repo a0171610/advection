@@ -101,7 +101,6 @@ contains
 
   subroutine update(t, dt)
     use uv_module, only: uv_nodiv, uv_div, uv_sbody
-    use grid_module, only: grid_id, pole_regrid
     use upstream_module, only: find_points
     use legendre_transform_module, only: legendre_analysis, legendre_synthesis, &
         legendre_synthesis_dlon, legendre_synthesis_dlat

@@ -60,54 +60,52 @@ contains
   end subroutine mass_correct
 
   subroutine local_mass_record(deplon, deplat, A, B, C, D, w_record)
-    use grid_module, only: nlon, nlat, grid_id, pole_regrid
+    use grid_module, only: nlon, nlat, pole_regrid
+    use interpolate_module, only: find_stencil_
     implicit none
 
-    integer(8) :: i, j
+    integer(8) :: i, j, k
     real(8), intent(out) :: w_record(nlon, nlat)
     real(8), intent(in) :: deplon(nlon, nlat), deplat(nlon, nlat)
     real(8), intent(in) :: A(nlon, nlat), B(nlon, nlat), C(nlon, nlat), D(nlon, nlat)
-    integer(8) :: lo, la, loA, laA, loB, laB, loC, laC, loD, laD
+    integer(8), dimension(4) :: is, js
 
     w_record(:, :) = 0.0d0
     do i = 1, nlon
       do j = 1, nlat
-        call grid_id(deplon(i, j), deplat(i, j), lo, la)
-        loA = lo; laA = la; loB = lo + 1; laB = la; loC = lo + 1; laC = la + 1; loD = lo; laD = la + 1
-        call pole_regrid(loA, laA)
-        call pole_regrid(loB, laB)
-        call pole_regrid(loC, laC)
-        call pole_regrid(loD, laD)
-        w_record(loA, laA) = w_record(loA, laA) + A(i, j)
-        w_record(loB, laB) = w_record(loB, laB) + B(i, j)
-        w_record(loC, laC) = w_record(loC, laC) + C(i, j)
-        w_record(loD, laD) = w_record(loD, laD) + D(i, j)
+        call find_stencil_(deplon(i, j), deplat(i, j), is, js)
+        do k = 1, 4
+          call pole_regrid(is(k), js(k))
+        end do
+        w_record(is(1), js(1)) = w_record(is(1), js(1)) + A(i, j)
+        w_record(is(2), js(2)) = w_record(is(2), js(2)) + B(i, j)
+        w_record(is(3), js(3)) = w_record(is(3), js(3)) + C(i, j)
+        w_record(is(4), js(4)) = w_record(is(4), js(4)) + D(i, j)
       end do
     end do
 
   end subroutine local_mass_record
 
   subroutine local_mass_correct(deplon, deplat, A, B, C, D, w_record)
-    use grid_module, only: nlon, nlat, grid_id, pole_regrid, wgt
+    use grid_module, only: nlon, nlat, pole_regrid, wgt
+    use interpolate_module, only: find_stencil_
     implicit none
 
-    integer(8) :: i, j
-    integer(8) :: lo, la, loA, laA, loB, laB, loC, laC, loD, laD
+    integer(8) :: i, j, k
     real(8), intent(in) :: deplon(nlon, nlat), deplat(nlon, nlat), w_record(nlon, nlat)
     real(8), intent(inout) :: A(nlon, nlat), B(nlon, nlat), C(nlon, nlat), D(nlon, nlat)
+    integer(8), dimension(4) :: is, js
 
-    do i = 2, nlon
-      do j = 2, nlat
-        call grid_id(deplon(i, j), deplat(i, j), lo, la)
-        loA = lo; laA = la; loB = lo + 1; laB = la; loC = lo + 1; laC = la + 1; loD = lo; laD = la + 1
-        call pole_regrid(loA, laA)
-        call pole_regrid(loB, laB)
-        call pole_regrid(loC, laC)
-        call pole_regrid(loD, laD)
-        A(i, j) = A(i, j) * wgt(laA) / (w_record(loA, laA) * wgt(j))
-        B(i, j) = B(i, j) * wgt(laB) / (w_record(loB, laB) * wgt(j))
-        C(i, j) = C(i, j) * wgt(laC) / (w_record(loC, laC) * wgt(j))
-        D(i, j) = D(i, j) * wgt(laD) / (w_record(loD, laD) * wgt(j))
+    do i = 1, nlon
+      do j = 1, nlat
+        call find_stencil_(deplon(i, j), deplat(i, j), is, js)
+        do k = 1, 4
+          call pole_regrid(is(k), js(k))
+        end do
+        A(i, j) = A(i, j) * wgt(js(1)) / (w_record(is(1), js(1)) * wgt(j))
+        B(i, j) = B(i, j) * wgt(js(2)) / (w_record(is(2), js(2)) * wgt(j))
+        C(i, j) = C(i, j) * wgt(js(3)) / (w_record(is(3), js(3)) * wgt(j))
+        D(i, j) = D(i, j) * wgt(js(4)) / (w_record(is(4), js(4)) * wgt(j))
       end do
     end do
   end subroutine local_mass_correct
