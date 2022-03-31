@@ -20,7 +20,7 @@ module interpolate_module
               interpolate_polin2, interpolate_polin2uv, &
               interpolate_bicubic, interpolate_linpol, &
               interpolate_diff, interpolate_bilinear_ratio, find_stencil_, &
-              interpolate_dist, interpolate_dist_ratio, record_departure_point
+              interpolate_dist, interpolate_dist_ratio
   
   contains
   
@@ -441,36 +441,5 @@ module interpolate_module
       u = (lat - lat_extend(j)) / (lat_extend(j+1) - lat_extend(j))
 
     end subroutine find_stencil_
-
-    subroutine record_departure_point(deplon, deplat)
-      use grid_module, only: pole_regrid
-      implicit none
-      real(8), intent(in) :: deplon(nlon, nlat), deplat(nlon, nlat)
-      integer(8) :: i, j, k
-
-      record_i(:, :, :) = 0
-      record_j(:, :, :) = 0
-      record_d(:, :, :) = 0
-      record_count(:, :) = 0
-
-      do i = 1, nlon
-        do j = 1, nlat
-          call find_stencil(deplon(i, j), deplat(i, j))
-         ! write(*,*) deplon(i, j), deplat(i, j), is(1), js(1), longitudes(is(1)), latitudes(js(1))
-          do k = 1, 4
-            call pole_regrid(is(k), js(k))
-            record_count(is(k), js(k)) = record_count(is(k), js(k)) + 1
-            record_i(is(k), js(k), record_count(is(k), js(k))) = i
-            record_j(is(k), js(k), record_count(is(k), js(k))) = j
-            record_d(is(k), js(k), record_count(is(k), js(k))) = k
-            !write(*,*) is(k), js(k), record_count(is(k), js(k))
-            if (record_count(is(k), js(k)) > 5) then
-            !  write(*,*) "RECORD COUNT ERROR"
-            endif
-          end do
-        end do
-      end do
-
-    end subroutine record_departure_point
 
   end module interpolate_module
