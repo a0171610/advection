@@ -2,7 +2,7 @@ module direction_module
 
   use grid_module, only: nlon, nlat, ntrunc, &
     gu, gv, gphi, gphi_initial, sphi_old, sphi, longitudes=>lon, latitudes=>lat, wgt
-  use mass_module, only: mass_correct, local_mass_record
+  use mass_module, only: mass_correct, local_mass_record, local_mass_correct
   use time_module, only: conserve, local_conserve, velocity
   private
   
@@ -108,7 +108,6 @@ contains
     use interpolate_module, only: interpolate_set, interpolate_setd, find_stencil_
     use interpolate_module, only: interpolate_bicubic, interpolate_bilinear, interpolate_bilinear_ratio
     use interpolate_module, only: interpolate_dist, interpolate_dist_ratio, interpolate_setuv
-    use interpolate_module, only: record_departure_point
     implicit none
 
     integer(8) :: i, j, m
@@ -142,6 +141,7 @@ contains
 
     if (local_conserve) then
       call local_mass_record(deplon, deplat, A, B, C, D, w_record)
+      call local_mass_correct(deplon, deplat, A, B, C, D, w_record)
     endif
 
     if (conserve) then
