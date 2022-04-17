@@ -168,6 +168,7 @@ contains
   subroutine set_niuv(dt)
     use math_module, only: math_pi, pi2=>math_pi2
     use sphere_module, only: xyz2uv, lonlat2xyz
+    use grid_module, only: pole_regrid
     implicit none
 
     real(8), intent(in) :: dt
@@ -188,6 +189,7 @@ contains
         end if
         ! lat = (J+1-2j)pi/(2J+1)
         q(i, j) = int(anint( 0.5d0 * (nlat + 1.0d0 - (2.0d0*dble(nlat)+1.0d0)*deplat(i, j) / math_pi) ))  !latitudesは大きい順で詰められているので注意
+        call pole_regrid(p(i, j), q(i, j))
         call calc_niuv(dt, p(i, j), q(i, j), longitudes(i), latitudes(j), midlon(i, j), midlat(i, j), gum(i, j), gvm(i, j))
       end do
     end do

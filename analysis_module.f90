@@ -87,15 +87,23 @@ contains
     allocate(l1_t(0:ntrunc,0:ntrunc), l2_t(0:ntrunc,0:ntrunc))
     do i = 1, nlon
       do j = 1, nlat
-        l1(i, j) = (gphi(i, j) - gphi_initial(i, j)) ** 2
-        l2(i, j) = gphi_initial(i, j) ** 2
+        l1(i, j) = ((gphi(i, j) - gphi_initial(i, j)) ** 2)
+        l2(i, j) = (gphi_initial(i, j) ** 2)
       end do
     end do
 
-    call legendre_analysis(l1, l1_t)
-    call legendre_analysis(l2, l2_t)
+    sum_g1 = 0.0d0
+    sum_g2 = 0.0d0
+    do i = 1, nlon
+      do j = 1, nlat
+        sum_g1 = sum_g1 + l1(i, j) * wgt(j)
+        sum_g2 = sum_g2 + l2(i, j) * wgt(j)
+      end do
+    end do
 
-    write(*,*) "l2 norm = ", sqrt(l1_t(0, 0) / l2_t(0, 0))
+    write(*,*) "l2 norm = ", sqrt(sum_g1 / sum_g2)
+    write(*,*) 'l1', sum(l1), 'l2', sum(l2)
+    write(*,*) sum_g1, sum_g2
 
     d_lamda = 360.0d0 / dble(nlon)
 
