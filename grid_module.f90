@@ -2,7 +2,7 @@ module grid_module
   implicit none
   private
 
-  integer(8), parameter, public ::  ntrunc = 42, nlon = 128, nlat = 64
+  integer(8), parameter, public ::  ntrunc = 39, nlon = 120, nlat = 60
 
   complex(8), dimension(:,:), allocatable, public :: sphi, sphi_old
   real(8), dimension(:,:), allocatable, public :: gphi, gphi_initial, gu, gv
@@ -73,7 +73,6 @@ contains
       print *, "No matching initial wind"
       stop
   end select
-      
 
   end subroutine grid_init
 
