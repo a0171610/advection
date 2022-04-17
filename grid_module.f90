@@ -7,6 +7,7 @@ module grid_module
   complex(8), dimension(:,:), allocatable, public :: sphi, sphi_old
   real(8), dimension(:,:), allocatable, public :: gphi, gphi_initial, gu, gv
   real(8), dimension(:), allocatable, public :: lon, lat, coslat, coslatr, wgt
+  real(8), public :: Umax
 
   public :: grid_init, grid_clean, pole_regrid
 
@@ -20,6 +21,7 @@ contains
       init_ghill, init_ghill2, init_cbell2, init_scyli2, init_ccbel2
     use uv_module, only: uv_sbody, uv_nodiv, uv_div
     use time_module, only: velocity, field
+    use planet_module, only: planet_radius
     implicit none
 
 
@@ -73,6 +75,8 @@ contains
       print *, "No matching initial wind"
       stop
   end select
+
+  Umax = real(maxval(gu) * planet_radius)
 
   end subroutine grid_init
 

@@ -1,7 +1,10 @@
 module analysis_module
-  use grid_module, only: gphi, gphi_initial, lat, wgt, lon, ntrunc
+  use grid_module, only: gphi, gphi_initial, lat, wgt, lon, ntrunc, Umax
   use field_module, only: X, Y
   use legendre_transform_module, only: legendre_analysis
+  use math_module, only: math_pi
+  use planet_module, only: planet_radius
+  use time_module, only: deltat
   implicit none
 
 contains
@@ -14,6 +17,7 @@ contains
     complex(8), allocatable :: l1_t(:, :), l2_t(:, :)
     real(8) :: dq, dqp, rmse
     real(8) :: sum_g1, sum_g2
+    real(8) :: d_lamda
 
     nlat = size(gphi, 2)
     nlon = size(gphi, 1)
@@ -92,5 +96,10 @@ contains
     call legendre_analysis(l2, l2_t)
 
     write(*,*) "l2 norm = ", sqrt(l1_t(0, 0) / l2_t(0, 0))
+
+    d_lamda = 360.0d0 / dble(nlon)
+
+    write(*,*) 'Courant Number = ', Umax * deltat / (d_lamda * math_pi * planet_radius / 180.0d0)
+
   end subroutine error_log
 end module analysis_module
