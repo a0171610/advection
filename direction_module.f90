@@ -3,7 +3,7 @@ module direction_module
   use grid_module, only: nlon, nlat, ntrunc, &
     gu, gv, gphi, gphi_initial, sphi_old, sphi, longitudes=>lon, latitudes=>lat, wgt
   use mass_module, only: mass_correct, local_mass_record, local_mass_correct
-  use time_module, only: conserve, local_conserve, velocity
+  use time_module, only: conserve, local_conserve, velocity, imethod
   private
   
   integer(8), dimension(:, :), allocatable, private :: pa, qa, pb, qb, pc, qc, pd, qd
@@ -177,7 +177,7 @@ contains
     enddo
 
     ! cos(lat)dF/dlat
-    call legendre_synthesis_dlat(sphi, dgphi) 
+    call legendre_synthesis_dlat(sphi, dgphi)
     call bicubic_interpolation_set(dgphi)
     call interpolate_set(dgphi)
     call interpolate_setd(gphix, gphiy, gphixy)
@@ -246,9 +246,11 @@ contains
   subroutine bicubic_interpolation_set(f)
     use legendre_transform_module, only: legendre_analysis, legendre_synthesis_dlat, legendre_synthesis_dlon, &
       legendre_synthesis_dlonlat
+    use math_module, only: pih=>math_pih
     implicit none
     integer(8) :: j
     real(8), intent(in) :: f(nlon, nlat)
+    real(8) :: eps, gphitmp(nlon)
 
     call legendre_analysis(f, sphi1)
     call legendre_synthesis_dlon(sphi1, gphix)
@@ -258,6 +260,22 @@ contains
       gphiy(:,j) = gphiy(:,j) / cos(latitudes(j))
       gphixy(:,j) = gphixy(:,j) / cos(latitudes(j))
     end do
+
+    if (imethod == "fd") then
+      eps = pih - latitudes(1)
+      gphitmp(:) = cshift(gphi_old(:,1), nlon/2)
+      gphiy(:, 1) = (gphitmp-gphi_old(:,2)) / (pih+eps-latitudes(2))
+      gphitmp(:) = cshift(gphix(:,1), nlon/2)
+      gphixy(:, 1) = (gphitmp-gphix(:,2)) / (pih+eps-latitudes(2))
+      gphitmp(:) = cshift(gphi_old(:,nlat), nlon/2)
+      gphiy(:, nlat) = (gphitmp - gphi_old(:,nlat-1)) / (-pih - eps - latitudes(nlat-1))
+      gphitmp(:) = cshift(gphix(:,nlat), nlon/2)
+      gphixy(:, nlat) = (gphitmp(:) - gphix(:,nlat-1)) / (-pih-eps-latitudes(nlat-1))
+      do j = 2, nlat-1
+        gphiy(:, j) = (gphi_old(:,j+1) - gphi_old(:,j-1)) / (latitudes(j+1) - latitudes(j-1))
+        gphixy(:, j) = (gphix(:,j+1) - gphix(:,j-1)) / (latitudes(j+1) - latitudes(j-1))
+      end do
+    endif
 
   end subroutine bicubic_interpolation_set
 
