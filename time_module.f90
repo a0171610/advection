@@ -7,6 +7,6 @@ module time_module
   ! クーラン数を1にするときはdeltatを18515.908736445574d0に、5.2にする時は96282.72542951698d0にする
 
   character(len=10), public :: &
-    model = "direction", imethod = "sph", velocity = "sbody", field = "ghill"
+    model = "slag", imethod = "fd", velocity = "sbody", field = "ghill"
   logical, public :: conserve = .false., local_conserve = .false.
 end module time_module
