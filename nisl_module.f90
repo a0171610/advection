@@ -68,7 +68,7 @@ contains
   end subroutine nisl_clean
 
   subroutine nisl_timeint()
-    use time_module, only: nstep, deltat, hstep
+    use time_module, only: nstep, deltat, hstep, field
     use legendre_transform_module, only: legendre_synthesis
     implicit none
 
@@ -83,6 +83,24 @@ contains
               write(11,*) longitudes(j), latitudes(k), gphi(j, k)
             end do
         end do
+      endif
+      if (i == nstep / 2 .and. field == "cbell2") then
+        open(10, file="log_cbell.txt")
+        do j = 1, nlon
+          do k = 1, nlat
+            write(10,*) gphi(j, k)
+          enddo
+        enddo
+        close(10)
+      endif
+      if (i == nstep / 2 .and. field == "ccbell2") then
+        open(10, file="log_ccbell.txt")
+        do j = 1, nlon
+          do k = 1, nlat
+            write(10,*) gphi(j, k)
+          enddo
+        enddo
+        close(10)
       endif
     end do
     close(11)
