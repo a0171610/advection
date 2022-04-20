@@ -2,11 +2,12 @@ module time_module
   implicit none
   private
 
-  integer(8), public ::  nstep = 80, hstep = 5
-  real(8), public :: deltat = 21600.0d0
-  ! クーラン数を1にするときはdeltatを18515.908736445574d0に、5.2にする時は96282.72542951698d0にする
+  integer(8), public ::  nstep = 60, hstep = 5
+  !integer(8), public ::  nstep = 80, hstep = 5
 
-  character(len=10), public :: &
-    model = "slag", imethod = "fd", velocity = "sbody", field = "ghill"
+  real(8), public :: deltat = 0.0833333333333333
+  !real(8), public :: deltat = 21600.0d0
+
+  character(len=10), public :: model = "nisl", imethod = "sph", velocity = "nodiv", field = "cbell2"
   logical, public :: conserve = .false., local_conserve = .false.
 end module time_module

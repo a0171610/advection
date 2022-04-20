@@ -57,8 +57,8 @@ contains
     do j=1, ny
       do i=1, nx
         lambda1 = lon(i) - ptt1
-        gu(i,j) = (sin(lambda1)**2*sin(2.0d0*lat(j))*kcosptt1 + pt1*cos(lat(j))) / (12.0d0 * day_in_sec)
-        gv(i,j) = sin(2.0d0*lambda1)*cos(lat(j))*kcosptt1 / (12.0d0 * day_in_sec)
+        gu(i,j) = (sin(lambda1)**2*sin(2.0d0*lat(j))*kcosptt1 + pt1*cos(lat(j)))
+        gv(i,j) = sin(2.0d0*lambda1)*cos(lat(j))*kcosptt1
       end do
     end do
 
