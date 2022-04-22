@@ -9,10 +9,11 @@ module interpolate16_module
     real(8), private :: u, t, dlon                            ! tとuは線分比
     real(8), dimension(:), allocatable, public :: lon_extend, lat_extend
     real(8), dimension(:,:), allocatable, private :: ff, ffx, ffy, ffxy, fu, fv, ffxl, ffyl
-  
+    integer(8), dimension(4), private :: is_, js_
+
     public :: interpolate16_init, interpolate16_clean, interpolate16_set, find_stencil_16, &
               interpolate16_dist, interpolate16_dist_ratio, interpolate16_setuv, &
-              interpolate16_bicubic, interpolate16_setd
+              interpolate16_bicubic, interpolate16_setd, interpolate16_bilinearuv
   
   contains
   
@@ -73,8 +74,8 @@ module interpolate16_module
       do i = 1, 16
           dist(i) = 1.0d0 / (orthodrome(lon, lat, longitudes(lon_g(i)), latitudes(lat_g(i))) ** 2)
       end do
-
       dist_sum = sum(dist(:))
+
       do i = 1, 16
           weight(i) = dist(i) / dist_sum
       end do
@@ -124,6 +125,46 @@ module interpolate16_module
       end do
   
     end subroutine interpolate16_set
+
+    subroutine interpolate16_bilinearuv(lon, lat, fiu, fiv)
+      implicit none
+
+      real(8), intent(in) :: lon, lat
+      real(8), intent(out) :: fiu, fiv
+      real(8), dimension(4) :: fsu, fsv
+      integer(8) :: k
+
+      call find_stencil(lon, lat)
+      do k=1, 4
+        fsu(k) = fu(is_(k),js_(k))
+        fsv(k) = fv(is_(k),js_(k))
+      end do
+      fiu = (1.0d0-u)*((1.0d0-t)*fsu(1)+t*fsu(2)) + u*(t*fsu(3)+(1.0d0-t)*fsu(4))
+      fiv = (1.0d0-u)*((1.0d0-t)*fsv(1)+t*fsv(2)) + u*(t*fsv(3)+(1.0d0-t)*fsv(4))
+
+    end subroutine interpolate16_bilinearuv
+
+    subroutine find_stencil(lon, lat)
+      implicit none
+
+      real(8), intent(in) :: lon, lat
+
+      integer(8) :: j
+
+      is_(1) = lon2i(lon,nx)
+      is_(2) = is_(1) + 1
+      t = lon/dlon - is_(1) + 1.0d0 ! t = (lon - dlon*(i-1))/dlon
+      is_(3:4) = is_(2:1:-1)
+
+      j = lat2j(lat, ny)
+      if (lat > lat_extend(j)) then
+        j = j - 1
+      end if
+      js_(1:2) = j
+      js_(3:4) = j + 1
+      u = (lat-lat_extend(j))/(lat_extend(j+1)-lat_extend(j))
+
+    end subroutine find_stencil
   
     subroutine find_stencil_4(lon, lat, is, js)
       use grid_module, only: pole_regrid

@@ -3,7 +3,9 @@ module upstream_module
     use grid_module, only: latitudes=>lat
     use interpolate_module, only: &
       interpolate_setuv, interpolate_bilinearuv
+    use interpolate16_module, only: interpolate16_setuv, interpolate16_bilinearuv
     use sphere_module, only: lonlat2xyz, uv2xyz
+    use time_module, only: model
     implicit none
     private
   
@@ -36,7 +38,11 @@ module upstream_module
       nx = size(u,1)
       ny = size(u,2)
   
-      call interpolate_setuv(u,v)
+      if (model == "direction1") then
+        call interpolate16_setuv(u,v)
+      else
+        call interpolate_setuv(u, v)
+      endif
       do j = 1, ny
         do i = 1, nx
           ! calculate initial values
@@ -58,7 +64,11 @@ module upstream_module
             ! calculate (lon,lat) from (x,y,z)
             lat = asin(z1)
             lon = modulo(atan2(y1,x1)+pi2,pi2)
-            call interpolate_bilinearuv(lon, lat, un, vn)
+            if (model == "direction1") then
+              call interpolate16_bilinearuv(lon, lat, un, vn)
+            else
+              call interpolate_bilinearuv(lon, lat, un, vn)
+            endif
             err = sqrt((x1-x0)*(x1-x0)+(y1-y0)*(y1-y0)+(z1-z0)*(z1-z0)) ! calculate error
             x0 = x1 ! save as the current point
             y0 = y1
