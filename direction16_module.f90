@@ -2,7 +2,6 @@ module direction16_module
 
   use grid_module, only: nlon, nlat, ntrunc, &
     gu, gv, gphi, gphi_initial, sphi_old, sphi, longitudes=>lon, latitudes=>lat, wgt
-  use field_module, only : X, Y
   use mass_module, only: mass_correct
   use time_module, only: conserve, velocity
   private
@@ -55,7 +54,7 @@ contains
     open(11, file="animation.txt")
     do i = 1, nlon
       do j = 1, nlat
-          write(11,*) X(i, j), Y(i, j), gphi(i, j)
+          write(11,*) longitudes(i), latitudes(j), gphi(i, j)
       end do        
     end do
     call update(0.5d0 * deltat, deltat)
@@ -86,7 +85,7 @@ contains
       if ( mod(i, hstep) == 0 ) then
         do j = 1, nlon
             do k = 1, nlat
-              write(11,*) X(j, k), Y(j, k), gphi(j, k)
+              write(11,*) longitudes(j), latitudes(k), gphi(j, k)
             end do
         end do
       endif
@@ -102,6 +101,8 @@ contains
     use interpolate16_module, only: interpolate16_set, interpolate16_setd, find_stencil_16
     use interpolate16_module, only: interpolate16_bicubic, interpolate16_dist, interpolate16_dist_ratio
     use interpolate16_module, only: interpolate16_dist, interpolate16_dist_ratio
+    use interpolate16_module, only: interpolate16_setuv
+    use interpolate16_module, only: interpolate12_dist_ratio
     use uv_module, only: uv_div, uv_nodiv
     implicit none
 
@@ -116,6 +117,8 @@ contains
     end select
     call find_points(gu, gv, 0.5*dt, midlon(1,:,:), midlat(1,:,:), deplon, deplat)
     ! dtに0.5をかけているのは引数のdtが最初のステップ以外は2.0*deltatを渡しているから
+
+    call interpolate16_setuv(gu, gv)
 
     do i = 1, nlon
         do j = 1, nlat
@@ -239,6 +242,7 @@ contains
     use grid_module, only: latitudes => lat, longitudes => lon
     use math_module, only: math_pi, pi2=>math_pi2
     use sphere_module, only: xyz2uv, lonlat2xyz
+    use interpolate16_module, only: interpolate16_bilinearuv
     implicit none
     real(8), intent(in) :: dt
     integer(8), intent(in) :: p1, q1
@@ -269,7 +273,7 @@ contains
     gum1 = gum1 + u
     gvm1 = gvm1 + v
 
-    !call uv_sbody_calc(midlon1, midlat1, u, v)
+    call interpolate16_bilinearuv(midlon1, midlat1, u, v)
     gum1 = gum1 - u
     gvm1 = gvm1 - v
 

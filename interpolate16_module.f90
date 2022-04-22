@@ -13,7 +13,8 @@ module interpolate16_module
 
     public :: interpolate16_init, interpolate16_clean, interpolate16_set, find_stencil_16, &
               interpolate16_dist, interpolate16_dist_ratio, interpolate16_setuv, &
-              interpolate16_bicubic, interpolate16_setd, interpolate16_bilinearuv
+              interpolate16_bicubic, interpolate16_setd, interpolate16_bilinearuv, &
+              interpolate12_dist_ratio
   
   contains
   
@@ -81,6 +82,31 @@ module interpolate16_module
       end do
 
     end subroutine interpolate16_dist_ratio
+
+    subroutine interpolate12_dist_ratio(lon, lat, weight)
+      use sphere_module, only: orthodrome
+      use grid_module, only: pole_regrid
+      implicit none
+      real(8), intent(in) :: lon, lat
+      real(8), intent(out) :: weight(16)
+      integer(8) lon_g(16), lat_g(16)
+      real(8) :: dist(16), dist_sum
+      integer(8) :: i
+
+      call find_stencil_16(lon, lat, lon_g, lat_g)
+
+      do i = 1, 16
+          dist(i) = 1.0d0 / (orthodrome(lon, lat, longitudes(lon_g(i)), latitudes(lat_g(i))) ** 5)
+      end do
+      dist(1) = 0.0d0; dist(4) = 0.0d0
+      dist(13) = 0.0d0; dist(16) = 0.0d0
+      dist_sum = sum(dist(:))
+
+      do i = 1, 16
+          weight(i) = dist(i) / dist_sum
+      end do
+
+    end subroutine interpolate12_dist_ratio
 
     subroutine interpolate16_dist(lon, lat, ans)
       implicit none
