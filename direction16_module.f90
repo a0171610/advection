@@ -108,6 +108,7 @@ contains
 
     integer(8) :: i, j, m, k
     real(8), intent(in) :: t, dt
+    real(8), parameter :: eps = 0.0000001d0
 
     select case(velocity)
     case("nodiv ")
@@ -122,7 +123,7 @@ contains
 
     do i = 1, nlon
         do j = 1, nlat
-          call interpolate16_dist_ratio(deplon(i, j), deplat(i, j), weight(:, i, j))
+          call interpolate12_dist_ratio(deplon(i, j), deplat(i, j), weight(:, i, j))
         end do
     end do
 
@@ -152,6 +153,7 @@ contains
     do j = 1, nlat
       do i = 1, nlon
         do k = 1, 16
+          if (weight(k, i, j) < eps) continue
           call interpolate16_bicubic(midlon(k, i, j), midlat(k, i, j), dgphim(k, i, j))
           gphim(i, j) = gphim(i, j) + weight(k, i, j) * gum(k, i, j) * dgphim(k, i, j) / cos(latitudes(j))
         end do
@@ -166,6 +168,7 @@ contains
     do j = 1, nlat
       do i = 1, nlon
         do k = 1, 16
+          if (weight(k, i, j) < eps) continue
           call interpolate16_bicubic(midlon(k, i, j), midlat(k, i, j), dgphim(k, i, j))
           gphim(i, j) = gphim(i, j) + weight(k, i, j) * gvm(k, i, j) * dgphim(k, i, j) / cos(latitudes(j))
         end do

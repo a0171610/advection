@@ -73,7 +73,7 @@ module interpolate16_module
       call find_stencil_16(lon, lat, lon_g, lat_g)
 
       do i = 1, 16
-          dist(i) = 1.0d0 / (orthodrome(lon, lat, longitudes(lon_g(i)), latitudes(lat_g(i))) ** 2)
+          dist(i) = 1.0d0 / (orthodrome(lon, lat, longitudes(lon_g(i)), latitudes(lat_g(i))) ** 5)
       end do
       dist_sum = sum(dist(:))
 
@@ -96,10 +96,11 @@ module interpolate16_module
       call find_stencil_16(lon, lat, lon_g, lat_g)
 
       do i = 1, 16
-          dist(i) = 1.0d0 / (orthodrome(lon, lat, longitudes(lon_g(i)), latitudes(lat_g(i))) ** 5)
+          dist(i) = 1.0d0 / (orthodrome(lon, lat, longitudes(lon_g(i)), latitudes(lat_g(i))) ** 2)
       end do
-      dist(1) = 0.0d0; dist(4) = 0.0d0
-      dist(13) = 0.0d0; dist(16) = 0.0d0
+      !dist(1) = 0.0d0; dist(4) = 0.0d0
+      !dist(13) = 0.0d0; dist(16) = 0.0d0
+      call change_array_min_N_to_zero(12, dist)
       dist_sum = sum(dist(:))
 
       do i = 1, 16
@@ -336,5 +337,29 @@ module interpolate16_module
       end do
   
     end subroutine interpolate16_setd
+
+    subroutine change_array_min_N_to_zero(id, arr)
+      use sort_module, only: bubblesort
+      implicit none
+      integer, intent(in) :: id
+      real(8), intent(inout) :: arr(16)
+      real(8) :: arr1(16)
+      real(8) :: limit
+      integer(8) :: i
+      real(8), parameter :: eps = 0.0000001d0
+
+      arr1(:) = arr(:)
+      call bubblesort(16, arr1)
+      limit = arr1(id)
+
+      arr1(:) = arr(:)
+      do i = 1, 16
+        if (arr1(i) < limit .or. abs(arr1(i) - limit) < eps) then
+          arr1(i) = 0.0d0
+        endif
+      enddo
+      arr(:) = arr1(:)
+
+    end subroutine change_array_min_N_to_zero
 
   end module interpolate16_module
