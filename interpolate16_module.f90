@@ -96,7 +96,7 @@ module interpolate16_module
       call find_stencil_16(lon, lat, lon_g, lat_g)
 
       do i = 1, 16
-          dist(i) = 1.0d0 / (orthodrome(lon, lat, longitudes(lon_g(i)), latitudes(lat_g(i))) ** 2)
+          dist(i) = 1.0d0 / (orthodrome(lon, lat, longitudes(lon_g(i)), latitudes(lat_g(i))) ** 5)
       end do
       !dist(1) = 0.0d0; dist(4) = 0.0d0
       !dist(13) = 0.0d0; dist(16) = 0.0d0

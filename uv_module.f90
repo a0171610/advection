@@ -36,7 +36,6 @@ contains
 
   subroutine uv_nodiv(t,lon,lat,gu,gv)
     use math_module, only: pi=>math_pi, pi2=>math_pi2
-    use planet_module, only: day_in_sec
     implicit none
 
     real(8), intent(in) :: t

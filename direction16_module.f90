@@ -123,7 +123,7 @@ contains
 
     do i = 1, nlon
         do j = 1, nlat
-          call interpolate12_dist_ratio(deplon(i, j), deplat(i, j), weight(:, i, j))
+          call interpolate16_dist_ratio(deplon(i, j), deplat(i, j), weight(:, i, j))
         end do
     end do
 

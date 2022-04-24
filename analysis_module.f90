@@ -14,7 +14,6 @@ contains
     integer(8) :: i, j, nlon, nlat
     real(8), allocatable :: w(:, :)
     real(8), allocatable :: l1(:, :), l2(:, :)
-    complex(8), allocatable :: l1_t(:, :), l2_t(:, :)
     real(8) :: dq, dqp, rmse
     real(8) :: sum_g1, sum_g2
     real(8) :: d_lamda
@@ -84,7 +83,6 @@ contains
 
     ! l2ノルムを求める
     allocate(l1(nlon, nlat), l2(nlon, nlat))
-    allocate(l1_t(0:ntrunc,0:ntrunc), l2_t(0:ntrunc,0:ntrunc))
     do i = 1, nlon
       do j = 1, nlat
         l1(i, j) = ((gphi(i, j) - gphi_initial(i, j)) ** 2)
