@@ -107,7 +107,7 @@ contains
         open(10, file="log_ccbell.txt")
         do j = 1, nlon
           do k = 1, nlat
-            write(10,*) gphi(j, k)
+            write(10,*) wgt(k), gphi(j, k)
           enddo
         enddo
         close(10)

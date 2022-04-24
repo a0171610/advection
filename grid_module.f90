@@ -3,8 +3,8 @@ module grid_module
   private
 
   !integer(8), parameter, public ::  ntrunc = 39, nlon = 120, nlat = 60
-  integer(8), parameter, public ::  ntrunc = 79, nlon = 240, nlat = 120
-  !integer(8), parameter, public ::  ntrunc = 159, nlon = 480, nlat = 240
+  !integer(8), parameter, public ::  ntrunc = 79, nlon = 240, nlat = 120
+  integer(8), parameter, public ::  ntrunc = 159, nlon = 480, nlat = 240
   !integer(8), parameter, public ::  ntrunc = 319, nlon = 960, nlat = 480
 
   complex(8), dimension(:,:), allocatable, public :: sphi, sphi_old
