@@ -82,30 +82,17 @@ contains
     write(*,*) "initial global mass sum", sum_g1, "final global mass sum", sum_g2
 
     ! l2ノルムを求める
-    allocate(l1(nlon, nlat), l2(nlon, nlat))
-    do i = 1, nlon
-      do j = 1, nlat
-        l1(i, j) = ((gphi(i, j) - gphi_initial(i, j)) ** 2)
-        l2(i, j) = (gphi_initial(i, j) ** 2)
-      end do
-    end do
-
     sum_g1 = 0.0d0
     sum_g2 = 0.0d0
+
     do i = 1, nlon
       do j = 1, nlat
-        sum_g1 = sum_g1 + l1(i, j) * wgt(j)
-        sum_g2 = sum_g2 + l2(i, j) * wgt(j)
-      end do
-    end do
+        sum_g1 = sum_g1 + ((gphi(i, j) - gphi_initial(i, j)) * wgt(j)) ** 2
+        sum_g2 = sum_g2 + (gphi_initial(i, j) * wgt(j)) ** 2
+      enddo
+    enddo
 
     write(*,*) "l2 norm = ", sqrt(sum_g1 / sum_g2)
-    write(*,*) 'l1', sum(l1), 'l2', sum(l2)
-    write(*,*) sum_g1, sum_g2
-
-    d_lamda = 360.0d0 / dble(nlon)
-
-    write(*,*) 'Courant Number = ', Umax * deltat / (d_lamda * math_pi * planet_radius / 180.0d0)
 
   end subroutine error_log
 end module analysis_module
