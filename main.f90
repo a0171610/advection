@@ -10,6 +10,7 @@ program advection
   use nisl_2step_module, only: nisl_2step_init, nisl_2step_timeint, nisl_2step_clean
   use direction_module, only: direction_init, direction_timeint, direction_clean
   use direction16_module, only: direction16_init, direction16_timeint, direction16_clean
+  use direction_2step_module, only: direction_2step_init, direction_2step_timeint, direction_2step_clean
   use field_module, only : field_init
   use analysis_module, only: error_log
 
@@ -43,6 +44,10 @@ program advection
       call direction16_init()
       call direction16_timeint()
       call direction16_clean()
+    case("direction_2step")
+      call direction_2step_init()
+      call direction_2step_timeint()
+      call direction_2step_clean()
     case default
       print *, "No matching model for", model
   end select

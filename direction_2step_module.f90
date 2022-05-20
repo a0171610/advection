@@ -1,4 +1,4 @@
-module direction_module
+module direction_2step_module
 
   use grid_module, only: nlon, nlat, ntrunc, &
     gu, gv, gphi, gphi_initial, sphi_old, sphi, longitudes=>lon, latitudes=>lat, wgt
@@ -17,11 +17,11 @@ module direction_module
   complex(8), dimension(:,:), allocatable, private :: sphi1
 
   private :: update, bicubic_interpolation_set
-  public :: direction_init, direction_timeint, direction_clean
+  public :: direction_2step_init, direction_2step_timeint, direction_2step_clean
 
 contains
 
-  subroutine direction_init()
+  subroutine direction_2step_init()
     use time_module, only: deltat
     use interpolate_module, only: interpolate_init
     use legendre_transform_module, only: legendre_synthesis
@@ -60,12 +60,11 @@ contains
           write(11,*) longitudes(i), latitudes(j), gphi(i, j)
       end do        
     end do
-    call update(0.5d0*deltat, deltat)
     write(*, *) 'step = 1 ', "maxval = ", maxval(gphi), 'minval = ', minval(gphi)
 
-  end subroutine direction_init
+  end subroutine direction_2step_init
 
-  subroutine direction_clean()
+  subroutine direction_2step_clean()
     use interpolate_module, only: interpolate_clean
     implicit none
 
@@ -76,16 +75,16 @@ contains
     deallocate(dgphimA, dgphimB, dgphimC, dgphimD)
     call interpolate_clean()
 
-  end subroutine direction_clean
+  end subroutine direction_2step_clean
 
-  subroutine direction_timeint()
+  subroutine direction_2step_timeint()
     use time_module, only: nstep, deltat, hstep, field
     implicit none
 
     integer(8) :: i, j, k
 
-    do i = 2, nstep
-      call update((i-1)*deltat, 2.0d0*deltat)
+    do i = 1, nstep
+      call update((i-0.5d0)*deltat, deltat)
       write(*, *) 'step = ', i, "maxval = ", maxval(gphi), 'minval = ', minval(gphi)
       if ( mod(i, hstep) == 0 ) then
         do j = 1, nlon
@@ -115,7 +114,7 @@ contains
     end do
     close(11)
     
-  end subroutine direction_timeint
+  end subroutine direction_2step_timeint
 
   subroutine update(t, dt)
     use uv_module, only: uv_nodiv, uv_div, uv_sbody
@@ -140,10 +139,27 @@ contains
     case default
       print *, "No matching model for", velocity
     end select
+    call interpolate_setuv(gu, gv)
+
     call find_points(gu, gv, 0.5d0*dt, midlonA, midlatA, deplon, deplat)
     ! dtに0.5をかけているのは引数のdtが最初のステップ以外は2.0*deltatを渡しているから
 
+    select case(velocity)
+    case("nodiv")
+      call uv_nodiv(t-dt,longitudes,latitudes,gu,gv)
+    case("div")
+      call uv_div(t-dt,longitudes,latitudes,gu,gv)
+    case("sbody")
+      call uv_sbody(longitudes, latitudes, gu, gv)
+    case default
+      print *, "No matching model for", velocity
+    end select
     call interpolate_setuv(gu, gv)
+
+    call set_niuv(dt)
+
+    call legendre_synthesis(sphi_old, gphi_old)
+    call interpolate_set(gphi_old)
 
     do i = 1, nlon
       do j = 1, nlat
@@ -152,22 +168,7 @@ contains
       end do
     end do
 
-    call set_niuv(dt)
-
-    call legendre_synthesis(sphi_old, gphi_old)
-
-    if (local_conserve) then
-      call local_mass_record(deplon, deplat, A, B, C, D, w_record)
-      call local_mass_correct(deplon, deplat, A, B, C, D, w_record)
-    endif
-
-    if (conserve) then
-      gmin(:, :) = min(0.0d0, minval(gphi))
-      gmax(:, :) = max(0.0d0, maxval(gphi))
-    end if
-
     ! まずはgphiにbilinear法で求めた値を詰めていく
-    call interpolate_set(gphi_old)
     do j = 1, nlat
       do i = 1, nlon
         call interpolate_dist(deplon(i, j), deplat(i, j), gphi(i, j))
@@ -182,10 +183,10 @@ contains
     gphim(:, :) = 0.0d0
     do j = 1, nlat
       do i = 1, nlon
-        call interpolate_bicubic(midlonA(i, j), midlatA(i, j), dgphimA(i, j))
-        call interpolate_bicubic(midlonB(i, j), midlatB(i, j), dgphimB(i, j))
-        call interpolate_bicubic(midlonC(i, j), midlatC(i, j), dgphimC(i, j))
-        call interpolate_bicubic(midlonD(i, j), midlatD(i, j), dgphimD(i, j))
+        call interpolate_bicubic(deplon(i, j), deplat(i, j), dgphimA(i, j))
+        call interpolate_bicubic(deplon(i, j), deplat(i, j), dgphimB(i, j))
+        call interpolate_bicubic(deplon(i, j), deplat(i, j), dgphimC(i, j))
+        call interpolate_bicubic(deplon(i, j), deplat(i, j), dgphimD(i, j))
 
         gphim(i, j) = gphim(i, j) + A(i, j) * gumA(i, j) * dgphimA(i, j) / cos(latitudes(j))
         gphim(i, j) = gphim(i, j) + B(i, j) * gumB(i, j) * dgphimB(i, j) / cos(latitudes(j))
@@ -201,10 +202,10 @@ contains
     call interpolate_setd(gphix, gphiy, gphixy)
     do j = 1, nlat
       do i = 1, nlon
-        call interpolate_bicubic(midlonA(i, j), midlatA(i, j), dgphimA(i, j))
-        call interpolate_bicubic(midlonB(i, j), midlatB(i, j), dgphimB(i, j))
-        call interpolate_bicubic(midlonC(i, j), midlatC(i, j), dgphimC(i, j))
-        call interpolate_bicubic(midlonD(i, j), midlatD(i, j), dgphimD(i, j))
+        call interpolate_bicubic(deplon(i, j), deplat(i, j), dgphimA(i, j))
+        call interpolate_bicubic(deplon(i, j), deplat(i, j), dgphimB(i, j))
+        call interpolate_bicubic(deplon(i, j), deplat(i, j), dgphimC(i, j))
+        call interpolate_bicubic(deplon(i, j), deplat(i, j), dgphimD(i, j))
 
         gphim(i, j) = gphim(i, j) + A(i, j) * gvmA(i, j) * dgphimA(i, j) / cos(latitudes(j))
         gphim(i, j) = gphim(i, j) + B(i, j) * gvmB(i, j) * dgphimB(i, j) / cos(latitudes(j))
@@ -212,13 +213,9 @@ contains
         gphim(i, j) = gphim(i, j) + D(i, j) * gvmD(i, j) * dgphimD(i, j) / cos(latitudes(j))
       enddo
     enddo
-
+    
     gphi(:, :) = gphi(:, :) + dt * gphim(:, :)
 
-    if (conserve) then
-      call mass_correct(gphi,gphi_old,gmax,gmin,w)
-    end if
-    
 ! time step
     call legendre_analysis(gphi, sphi1)
     do m = 0, ntrunc
@@ -251,11 +248,10 @@ contains
         pc(i, j) = tmp1(3); qc(i, j) = tmp2(3)
         pd(i, j) = tmp1(4); qd(i, j) = tmp2(4)
 
-
-        call calc_niuv(dt, pa(i, j), qa(i, j), longitudes(i), latitudes(j), midlonA(i, j), midlatA(i, j), gumA(i, j), gvmA(i, j))
-        call calc_niuv(dt, pb(i, j), qb(i, j), longitudes(i), latitudes(j), midlonB(i, j), midlatB(i, j), gumB(i, j), gvmB(i, j))
-        call calc_niuv(dt, pc(i, j), qc(i, j), longitudes(i), latitudes(j), midlonC(i, j), midlatC(i, j), gumC(i, j), gvmC(i, j))
-        call calc_niuv(dt, pd(i, j), qd(i, j), longitudes(i), latitudes(j), midlonD(i, j), midlatD(i, j), gumD(i, j), gvmD(i, j))
+        call calc_niuv(dt, pa(i, j), qa(i, j), longitudes(i), latitudes(j), deplon(i, j), deplat(i, j), gumA(i, j), gvmA(i, j))
+        call calc_niuv(dt, pb(i, j), qb(i, j), longitudes(i), latitudes(j), deplon(i, j), deplat(i, j), gumB(i, j), gvmB(i, j))
+        call calc_niuv(dt, pc(i, j), qc(i, j), longitudes(i), latitudes(j), deplon(i, j), deplat(i, j), gumC(i, j), gvmC(i, j))
+        call calc_niuv(dt, pd(i, j), qd(i, j), longitudes(i), latitudes(j), deplon(i, j), deplat(i, j), gumD(i, j), gvmD(i, j))
       end do
     end do
         
@@ -352,4 +348,4 @@ contains
 
   end subroutine calc_niuv
 
-end module direction_module
+end module direction_2step_module
