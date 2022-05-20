@@ -13,10 +13,8 @@ contains
     implicit none
     integer(8) :: i, j, nlon, nlat
     real(8), allocatable :: w(:, :)
-    real(8), allocatable :: l1(:, :), l2(:, :)
     real(8) :: dq, dqp, rmse
     real(8) :: sum_g1, sum_g2
-    real(8) :: d_lamda
 
     nlat = size(gphi, 2)
     nlon = size(gphi, 1)
