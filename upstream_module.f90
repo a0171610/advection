@@ -15,7 +15,7 @@ module upstream_module
     public :: find_points
   
   contains
-  !! midlon, midlatはdt前の出発点(middle), deplon, deplatは2*dt前
+  !! midlon, midlatはdt前の出発点(middle), deplon, deplatは2*dt前, uとvには時刻tのものを入れる(式(31)を参照)
 
     subroutine find_points(u, v, dt, midlon, midlat, deplon, deplat)
       use math_module, only: pi2=>math_pi2
