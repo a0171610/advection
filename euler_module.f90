@@ -3,15 +3,15 @@ module euler_module
   use grid_module, only: &
     nlon, nlat, ntrunc, &
     gu, gv, gphi, sphi, sphi_old, lon, lat, coslatr
-  use time_module, only: nstep, hstep, deltat
+  use time_module, only: nstep, hstep, deltat, velocity
   use legendre_transform_module, only: &
     legendre_analysis, legendre_synthesis, &
     legendre_synthesis_dlon, legendre_synthesis_dlat
-  use field_module, only : X, Y
   implicit none
   private
 
   real(8), dimension(:,:), allocatable, private :: dgphi
+
   complex(8), dimension(:,:), allocatable, private :: sphi1
 
   private :: update
@@ -25,8 +25,8 @@ contains
     allocate(dgphi(nlon,nlat), sphi1(0:ntrunc,0:ntrunc))
 
     call legendre_synthesis(sphi,gphi)
-    call update(0.5d0*deltat)
-    call update(deltat)
+    call update(0.0d0*deltat,0.5d0*deltat)
+    call update(0.5d0*deltat,deltat)
 
   end subroutine eulerian_init
 
@@ -39,27 +39,29 @@ contains
   subroutine eulerian_timeint()
     implicit none
 
-    integer(8) :: i, j
+    integer(8) :: i
 
     do i=2, nstep
-      call update(2.0d0*deltat)
+      call update((i-1)*deltat,2.0d0*deltat)
       write(*, *) "step=", i, "maxval = ", maxval(gphi)
     end do
-    open(10, file="log.txt")
-    do i = 1, nlon
-      do j = 1, nlat
-        write(10,*) X(i, j), Y(i, j), gphi(i, j)
-      enddo
-    enddo
 
   end subroutine eulerian_timeint
 
-  subroutine update(dt)
+  subroutine update(t,dt)
+    use uv_module, only: uv_nodiv, uv_div
     implicit none
 
-    real(8), intent(in) :: dt
+    real(8), intent(in) :: t, dt
+
     integer(8) :: j, m, n
 
+    select case(velocity)
+      case("nodiv ")
+        call uv_nodiv(t,lon,lat,gu,gv)
+      case("div   ")
+        call uv_div(t,lon,lat,gu,gv)
+    end select
     call legendre_synthesis(sphi_old, gphi)
 ! dF/dlon
     call legendre_synthesis_dlon(sphi, dgphi)
@@ -74,10 +76,9 @@ contains
     end do
     gphi(:, :) = gphi(:, :) - dt*gv(:, :)*dgphi(:, :)
     call legendre_analysis(gphi, sphi1)
-
 ! update
     do m=0, ntrunc
-      sphi_old(m:ntrunc,m) = sphi(m:ntrunc,m) 
+      sphi_old(m:ntrunc,m) = sphi(m:ntrunc,m)
     end do
     do m=0, ntrunc
       do n=m, ntrunc
@@ -88,4 +89,3 @@ contains
   end subroutine update
 
 end module euler_module
-  
