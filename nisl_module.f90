@@ -53,7 +53,7 @@ contains
           write(11,*) longitudes(i), latitudes(j), gphi(i, j)
       end do        
     end do
-    call update(0.5d0*deltat, deltat)
+    call update(0.0d0, deltat)
 
   end subroutine nisl_init
 

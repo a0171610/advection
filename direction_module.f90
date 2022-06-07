@@ -60,7 +60,7 @@ contains
           write(11,*) longitudes(i), latitudes(j), gphi(i, j)
       end do        
     end do
-    call update(0.5d0*deltat, deltat)
+    call update(0.0d0, deltat)
     write(*, *) 'step = 1 ', "maxval = ", maxval(gphi), 'minval = ', minval(gphi)
 
   end subroutine direction_init
@@ -117,6 +117,7 @@ contains
     
   end subroutine direction_timeint
 
+  ! dt = leapfrog法の+と-の時刻差, t=中央の時刻
   subroutine update(t, dt)
     use uv_module, only: uv_nodiv, uv_div, uv_sbody
     use upstream_module, only: find_points
