@@ -53,6 +53,7 @@ contains
           write(11,*) longitudes(i), latitudes(j), gphi(i, j)
       end do        
     end do
+    call update(0.0d0, deltat)
 
   end subroutine nisl_2step_init
 
@@ -73,8 +74,8 @@ contains
 
     integer(8) :: i, j, k
 
-    do i = 1, nstep
-      call update((i-0.5d0)*deltat, deltat)
+    do i = 2, nstep
+      call update((i- 1)*deltat, 2.0d0*deltat)
       write(*, *) 'step = ', i, "maxval = ", maxval(gphi), 'minval = ', minval(gphi)
       if ( mod(i, hstep) == 0 ) then
         do j = 1, nlon
@@ -106,6 +107,7 @@ contains
     
   end subroutine nisl_2step_timeint
 
+  ! dt = leapfrog法の+と-の時刻差, t=中央の時刻
   subroutine update(t, dt)
     use uv_module, only: uv_nodiv, uv_div
     use upstream_module, only: find_points
@@ -131,9 +133,9 @@ contains
 
     select case(velocity)
     case("nodiv ")
-      call uv_nodiv(t-dt,longitudes,latitudes,gu,gv)
+      call uv_nodiv(t-0.5d0*dt,longitudes,latitudes,gu,gv)
     case("div   ")
-      call uv_div(t-dt,longitudes,latitudes,gu,gv)
+      call uv_div(t-0.5d0*dt,longitudes,latitudes,gu,gv)
     end select
 
     call interpolate_setuv(gu, gv)
