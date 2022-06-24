@@ -2,7 +2,7 @@
 .SUFFIXES : .f90 .o
 
 FC = gfortran
-FFLAGS = -O2 -I/usr/local/include -Wall -g -fcheck=array-temps,bounds,do,mem,pointer,recursion
+FFLAGS = -O2 -I/usr/local/include -Wall -g -fcheck=array-temps,bounds,do,mem,pointer,recursion -frecursive
 LD = f90
 LDFLAGS = -L/usr/local/lib
 LDLIBS = -lfftw3
