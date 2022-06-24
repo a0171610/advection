@@ -10,7 +10,8 @@ module nisl_2step_module
   integer(8), allocatable, private :: p(:,:), q(:,:)
   real(8), dimension(:,:), allocatable, private :: &
     gphi_old, dgphi, dgphim, gphim, gphix, gphiy, gphixy, &
-    midlon, midlat, deplon, deplat, gum, gvm, gmin, gmax, w
+    midlon, midlat, deplon, deplat, gum, gvm, gmin, gmax, w, &
+    mid_time_lon, mid_time_lat
   complex(8), dimension(:,:), allocatable, private :: sphi1
 
   private :: update, bicubic_interpolation_set
@@ -29,6 +30,7 @@ contains
     allocate(sphi1(0:ntrunc, 0:ntrunc),gphi_old(nlon, nlat))
     allocate(gphim(nlon, nlat),dgphi(nlon, nlat),dgphim(nlon, nlat))
     allocate(midlon(nlon, nlat), midlat(nlon, nlat))
+    allocate(mid_time_lon(nlon, nlat), mid_time_lat(nlon, nlat))
     allocate(deplon(nlon, nlat), deplat(nlon, nlat), p(nlon, nlat), q(nlon, nlat))
     allocate(gum(nlon, nlat), gvm(nlon, nlat))
     allocate(gphix(nlon, nlat), gphiy(nlon, nlat), gphixy(nlon, nlat))
@@ -129,7 +131,7 @@ contains
 
     call interpolate_setuv(gu, gv)
 
-    call find_points(gu, gv, 0.5d0*dt, midlon, midlat, deplon, deplat)   ! dtに0.5をかけているのは引数のdtが最初のステップ以外は2.0*deltatを渡しているから
+    call find_points(gu, gv, 0.5d0*dt, mid_time_lon, midlat, deplon, deplat)   ! dtに0.5をかけているのは引数のdtが最初のステップ以外は2.0*deltatを渡しているから
 
     select case(velocity)
     case("nodiv ")
@@ -155,7 +157,7 @@ contains
     end do
 
     ! dF/dlon
-    call legendre_synthesis_dlon(sphi, dgphi)
+    call legendre_synthesis_dlon(sphi_old, dgphi)
     call bicubic_interpolation_set(dgphi) 
     call interpolate_set(dgphi)
     call interpolate_setd(gphix, gphiy, gphixy)
@@ -167,7 +169,7 @@ contains
     enddo
 
     ! cos(lat)dF/dlat
-    call legendre_synthesis_dlat(sphi, dgphi) 
+    call legendre_synthesis_dlat(sphi_old, dgphi)
     call bicubic_interpolation_set(dgphi)
     call interpolate_set(dgphi)
     call interpolate_setd(gphix, gphiy, gphixy)
@@ -218,7 +220,7 @@ contains
         ! lat = (J+1-2j)pi/(2J+1)
         q(i, j) = int(anint( 0.5d0 * (nlat + 1.0d0 - (2.0d0*dble(nlat)+1.0d0)*deplat(i, j) / math_pi) ))  !latitudesは大きい順で詰められているので注意
         call pole_regrid(p(i, j), q(i, j))
-        call calc_niuv(dt, p(i, j), q(i, j), longitudes(i), latitudes(j), deplon(i, j), deplat(i, j), gum(i, j), gvm(i, j))
+        call calc_niuv(dt, p(i, j), q(i, j), longitudes(i), latitudes(j), gum(i, j), gvm(i, j))
       end do
     end do
         
@@ -243,7 +245,7 @@ contains
   end subroutine bicubic_interpolation_set
 
   ! Ritchie1987 式(45)のu^* - Uをgumに詰める(gvmも)
-  subroutine calc_niuv(dt, p1, q1, lon, lat, midlon1, midlat1, gum1, gvm1)
+  subroutine calc_niuv(dt, p1, q1, lon, lat, gum1, gvm1)
     use grid_module, only: latitudes => lat, longitudes => lon
     use math_module, only: math_pi, pi2=>math_pi2
     use sphere_module, only: xyz2uv, lonlat2xyz
@@ -253,7 +255,7 @@ contains
     integer(8), intent(in) :: p1, q1
     real(8), intent(in) :: lon, lat
     real(8), intent(out) :: gum1, gvm1
-    real(8), intent(out) :: midlon1, midlat1
+    real(8) :: midlon1, midlat1
 
     real(8) :: xg, yg, zg, xr, yr, zr, xm, ym, zm, xdot, ydot, zdot, lon_grid, lat_grid, u, v, b
 
