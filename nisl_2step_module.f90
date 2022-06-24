@@ -141,7 +141,9 @@ contains
     end select
 
     call interpolate_setuv(gu, gv)
-    call set_niuv(dt)
+
+    call find_nearest_grid()
+    call calculate_resudual_velocity(dt)
 
     call legendre_synthesis(sphi_old, gphi_old)
 
@@ -195,13 +197,11 @@ contains
 
   end subroutine update
 
-  subroutine set_niuv(dt)
+  subroutine find_nearest_grid
     use math_module, only: math_pi, pi2=>math_pi2
     use sphere_module, only: xyz2uv, lonlat2xyz
     use grid_module, only: pole_regrid
     implicit none
-
-    real(8), intent(in) :: dt
 
     integer(8) :: i, j
     real(8) :: dlonr
@@ -220,11 +220,51 @@ contains
         ! lat = (J+1-2j)pi/(2J+1)
         q(i, j) = int(anint( 0.5d0 * (nlat + 1.0d0 - (2.0d0*dble(nlat)+1.0d0)*deplat(i, j) / math_pi) ))  !latitudesは大きい順で詰められているので注意
         call pole_regrid(p(i, j), q(i, j))
-        call calc_niuv(dt, p(i, j), q(i, j), longitudes(i), latitudes(j), gum(i, j), gvm(i, j))
       end do
     end do
-        
-  end subroutine  set_niuv
+  end subroutine find_nearest_grid
+
+  subroutine calculate_resudual_velocity(dt)
+    use grid_module, only: latitudes => lat, longitudes => lon
+    use math_module, only: math_pi, pi2=>math_pi2
+    use sphere_module, only: xyz2uv, lonlat2xyz
+    use interpolate_module, only: interpolate_bilinearuv
+    implicit none
+    real(8), intent(in) :: dt
+    integer(8) :: i, j
+    real(8) :: lon_grid, lat_grid
+    real(8) :: xg, yg, zg, xr, yr, zr, xm, ym, zm, xdot, ydot, zdot, u, v, b
+    real(8) :: midlon1, midlat1
+
+    do i = 1, nlon
+      do j = 1, nlat
+        lon_grid = longitudes(p(i, j))
+        lat_grid = latitudes(q(i, j))
+        call lonlat2xyz(lon_grid, lat_grid, xr, yr, zr)
+        ! arrival points
+        call lonlat2xyz(longitudes(i), latitudes(j), xg, yg, zg)
+
+        b = 1.0d0 / sqrt( 2.0d0 * (1.0d0 + (xg*xr + yg*yr + zg*zr)) ) ! Ritchie1987 式(44)
+        xm = b * (xg + xr)
+        ym = b * (yg + yr)
+        zm = b * (zg + zr)
+        midlon1 = modulo(atan2(ym, xm) + pi2, pi2)
+        midlat1 = asin(zm)
+
+        xdot = (xg - xr) / dt
+        ydot = (yg - yr) / dt
+        zdot = (zg - zr) / dt
+        call xyz2uv(xdot, ydot, zdot, midlon1, midlat1, u, v)  !Richie1987式(49)
+        gum(i, j) = gum(i, j) + u
+        gvm(i, j) = gvm(i, j) + v
+    
+        call interpolate_bilinearuv(midlon1, midlat1, u, v)
+        gum(i, j) = gum(i, j) - u
+        gvm(i, j) = gvm(i, j) - v
+      end do
+    end do
+
+  end subroutine calculate_resudual_velocity
 
   subroutine bicubic_interpolation_set(f)
     use legendre_transform_module, only: legendre_analysis, legendre_synthesis_dlat, legendre_synthesis_dlon, &
@@ -243,47 +283,5 @@ contains
     end do
 
   end subroutine bicubic_interpolation_set
-
-  ! Ritchie1987 式(45)のu^* - Uをgumに詰める(gvmも)
-  subroutine calc_niuv(dt, p1, q1, lon, lat, gum1, gvm1)
-    use grid_module, only: latitudes => lat, longitudes => lon
-    use math_module, only: math_pi, pi2=>math_pi2
-    use sphere_module, only: xyz2uv, lonlat2xyz
-    use interpolate_module, only: interpolate_bilinearuv
-    implicit none
-    real(8), intent(in) :: dt
-    integer(8), intent(in) :: p1, q1
-    real(8), intent(in) :: lon, lat
-    real(8), intent(out) :: gum1, gvm1
-    real(8) :: midlon1, midlat1
-
-    real(8) :: xg, yg, zg, xr, yr, zr, xm, ym, zm, xdot, ydot, zdot, lon_grid, lat_grid, u, v, b
-
-
-    lon_grid = longitudes(p1)
-    lat_grid = latitudes(q1)
-    call lonlat2xyz(lon_grid, lat_grid, xr, yr, zr)
-    ! arrival points
-    call lonlat2xyz(lon, lat, xg, yg, zg)
-
-    b = 1.0d0 / sqrt( 2.0d0 * (1.0d0 + (xg*xr + yg*yr + zg*zr)) ) ! Ritchie1987 式(44)
-    xm = b * (xg + xr)
-    ym = b * (yg + yr)
-    zm = b * (zg + zr)
-    midlon1 = modulo(atan2(ym, xm) + pi2, pi2)
-    midlat1 = asin(zm)
-
-    xdot = (xg - xr) / dt
-    ydot = (yg - yr) / dt
-    zdot = (zg - zr) / dt
-    call xyz2uv(xdot, ydot, zdot, midlon1, midlat1, u, v)  !Richie1987式(49)
-    gum1 = gum1 + u
-    gvm1 = gvm1 + v
-
-    call interpolate_bilinearuv(midlon1, midlat1, u, v)
-    gum1 = gum1 - u
-    gvm1 = gvm1 - v
-
-  end subroutine calc_niuv
 
 end module nisl_2step_module
