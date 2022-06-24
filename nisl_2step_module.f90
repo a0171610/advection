@@ -2,7 +2,6 @@ module nisl_2step_module
 
   use grid_module, only: nlon, nlat, ntrunc, &
     gu, gv, gphi, gphi_initial, sphi_old, sphi, longitudes=>lon, latitudes=>lat, wgt
-  use field_module, only : X, Y
   use mass_module, only: mass_correct
   use time_module, only: conserve, velocity
   private
@@ -14,7 +13,7 @@ module nisl_2step_module
     mid_time_lon, mid_time_lat
   complex(8), dimension(:,:), allocatable, private :: sphi1
 
-  private :: update, bicubic_interpolation_set
+  private :: update
   public :: nisl_2step_init, nisl_2step_timeint, nisl_2step_clean
 
 contains
@@ -111,7 +110,9 @@ contains
 
   ! dt = leapfrog法の+と-の時刻差, t=中央の時刻
   subroutine update(t, dt)
+    use grid_module, only: pole_regrid
     use uv_module, only: uv_nodiv, uv_div
+    use sphere_module, only: orthodrome
     use upstream_module, only: find_points
     use legendre_transform_module, only: legendre_analysis, legendre_synthesis, &
         legendre_synthesis_dlon, legendre_synthesis_dlat, legendre_synthesis_dlonlat
@@ -119,7 +120,8 @@ contains
     use interpolate_module, only: interpolate_setuv
     implicit none
 
-    integer(8) :: i, j, m
+    integer(8) :: i, j, m, x1, y1, x2, y2, x3, y3, x4, y4
+    real(8) :: d1, d2, b(nlon * nlat), x(nlon * nlat)
     real(8), intent(in) :: t, dt
 
     select case(velocity)
@@ -158,37 +160,41 @@ contains
       end do
     end do
 
-    ! dF/dlon
-    call legendre_synthesis_dlon(sphi_old, dgphi)
-    call bicubic_interpolation_set(dgphi) 
-    call interpolate_set(dgphi)
-    call interpolate_setd(gphix, gphiy, gphixy)
-    do j = 1, nlat
-      do i = 1, nlon
-        call interpolate_bicubic(deplon(i, j), deplat(i, j), dgphim(i, j))
-      enddo
-      gphim(:, j) = gum(:, j) * dgphim(:,j) / cos(latitudes(j)) ! gum: -u'
-    enddo
+    gphim(:, :) = 0.0d0
+    do i = 1, nlon
+      do j = 1, nlat
+        x1 = i + 1; y1 = j
+        x2 = i - 1; y2 = j
+        x3 = i; y3 = j + 1
+        x4 = i; y4 = j - 1
+        call pole_regrid(x1, y1)
+        call pole_regrid(x2, y2)
+        call pole_regrid(x3, y3)
+        call pole_regrid(x4, y4)
+        d1 = orthodrome(longitudes(x1), latitudes(y1), longitudes(x2), latitudes(y2))
+        d2 = orthodrome(longitudes(x3), latitudes(y3), longitudes(x4), latitudes(y4))
 
-    ! cos(lat)dF/dlat
-    call legendre_synthesis_dlat(sphi_old, dgphi)
-    call bicubic_interpolation_set(dgphi)
-    call interpolate_set(dgphi)
-    call interpolate_setd(gphix, gphiy, gphixy)
-    do j = 1, nlat
-      do i = 1, nlon
-        call interpolate_bicubic(deplon(i, j), deplat(i, j), dgphim(i, j))
-      enddo
-      gphim(:, j) = gphim(:, j) + gvm(:, j) * dgphim(:,j) / cos(latitudes(j)) ! gvm: -v'
-    enddo
+        gphim(i, j) = dgphi(i, j) + gum(i, j) * (gphi_old(x1,y1) - gphi_old(x2,y2)) / d1
+        gphim(i, j) = dgphi(i, j) + gvm(i, j) * (gphi_old(x3,y3) - gphi_old(x4,y4)) / d2
+      end do
+    end do
 
-    gphi = gphi + dt * gphim
+    gphi(:, :) = gphi(:, :) + 0.5d0 * dt * gphim(:, :)
 
-    if(conserve) then
-      call mass_correct(gphi, gphi_old, gmax, gmin, w)
-    endif
+    do i = 1, nlon
+      do j = 1, nlat
+        m = i + (j - 1) * nlon
+        b(m) = gphi(i, j)
+      end do
+    end do
 
-! time filter
+    call solve_sparse_matrix(0.5d0*dt, b, x)
+    do m = 1, nlon*nlat
+      i = mod(m, nlon) + 1
+      j = int((m-i)/nlon) + 1
+      gphi(i, j) = x(m)
+    end do
+
     call legendre_analysis(gphi, sphi1)
     do m = 0, ntrunc
       sphi_old(m : ntrunc, m) = sphi(m : ntrunc, m)       
@@ -196,6 +202,73 @@ contains
     enddo
 
   end subroutine update
+
+  subroutine solve_sparse_matrix(dt, b, x)
+    use lsqr_module, only: lsqr_solver_ez
+    use sphere_module, only: orthodrome
+    use grid_module, only: pole_regrid
+    implicit none
+
+    integer(8), parameter :: sz = nlat * nlon
+    real(8), intent(in) :: dt
+    integer(8) :: x1, y1, x2, y2, x3, y3, x4, y4
+    real(8), intent(in) :: b(sz)
+    real(8), intent(out) :: x(sz)
+    type(lsqr_solver_ez) :: solver
+    integer :: istop
+    integer :: i, j, id = 1, row, col
+    integer, dimension(sz * 4) :: icol, irow
+    real(8), dimension(sz * 4) :: a
+    real(8) :: val, d1, d2
+
+    do i = 1, nlon
+      do j = 1, nlat
+        row = i + (j-1) * int(nlon)
+        x1 = i + 1; y1 = j
+        x2 = i - 1; y2 = j
+        x3 = i; y3 = j + 1
+        x4 = i; y4 = j - 1
+        call pole_regrid(x1, y1)
+        call pole_regrid(x2, y2)
+        call pole_regrid(x3, y3)
+        call pole_regrid(x4, y4)
+        d1 = orthodrome(longitudes(x1), latitudes(y1), longitudes(x2), latitudes(y2))
+        d2 = orthodrome(longitudes(x3), latitudes(y3), longitudes(x4), latitudes(y4))
+
+        val = -gum(i, j) * dt / (2.0d0 * d1)
+        col = x1 + (y1 - 1) * int(nlon)
+        irow(id) = row
+        icol(id) = col
+        a(id) = val
+        write(*,*) i, j, id
+        id = id + 1
+
+        val = gum(i, j) * dt / (2.0d0 * d1)
+        col = x2 + (y2 - 1) * int(nlon)
+        irow(id) = row
+        icol(id) = col
+        a(id) = val
+        id = id + 1
+
+        val = -gvm(i, j) * dt / (2.0d0 * d2)
+        col = x3 + (y3 - 1) * int(nlon)
+        irow(id) = row
+        icol(id) = col
+        a(id) = val
+        id = id + 1
+
+        val = gvm(i, j) * dt / (2.0d0 * d2)
+        col = x4 + (y4 - 1) * int(nlon)
+        irow(id) = row
+        icol(id) = col
+        a(id) = val
+        id = id + 1
+      end do
+    end do
+
+    call solver%initialize(int(sz), int(sz), a, irow, icol) ! use defaults for other optional inputs
+    call solver%solve(b, 0.0d0, x, istop)       ! solve the linear system
+  end subroutine solve_sparse_matrix
 
   subroutine find_nearest_grid
     use math_module, only: math_pi, pi2=>math_pi2
@@ -265,23 +338,5 @@ contains
     end do
 
   end subroutine calculate_resudual_velocity
-
-  subroutine bicubic_interpolation_set(f)
-    use legendre_transform_module, only: legendre_analysis, legendre_synthesis_dlat, legendre_synthesis_dlon, &
-      legendre_synthesis_dlonlat
-    implicit none
-    integer(8) :: j
-    real(8), intent(in) :: f(nlon, nlat)
-
-    call legendre_analysis(f, sphi1)
-    call legendre_synthesis_dlon(sphi1, gphix)
-    call legendre_synthesis_dlat(sphi1, gphiy)
-    call legendre_synthesis_dlonlat(sphi1, gphixy)
-    do j = 1, nlat
-      gphiy(:,j) = gphiy(:,j) / cos(latitudes(j))
-      gphixy(:,j) = gphixy(:,j) / cos(latitudes(j))
-    end do
-
-  end subroutine bicubic_interpolation_set
 
 end module nisl_2step_module
