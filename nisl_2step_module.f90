@@ -216,11 +216,12 @@ contains
     real(8), intent(out) :: x(sz)
     type(lsqr_solver_ez) :: solver
     integer :: istop
-    integer :: i, j, id = 1, row, col
+    integer :: i, j, id, row, col
     integer, dimension(sz * 4) :: icol, irow
     real(8), dimension(sz * 4) :: a
     real(8) :: val, d1, d2
 
+    id = 1
     do i = 1, nlon
       do j = 1, nlat
         row = i + (j-1) * int(nlon)
@@ -240,7 +241,6 @@ contains
         irow(id) = row
         icol(id) = col
         a(id) = val
-        write(*,*) i, j, id
         id = id + 1
 
         val = gum(i, j) * dt / (2.0d0 * d1)
