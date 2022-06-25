@@ -55,6 +55,7 @@ contains
       end do        
     end do
     call update(0.0d0, deltat)
+    write(*, *) 'step = 0 ', "maxval = ", maxval(gphi), 'minval = ', minval(gphi)
 
   end subroutine nisl_2step_init
 
@@ -190,7 +191,10 @@ contains
 
     call solve_sparse_matrix(0.5d0*dt, b, x)
     do m = 1, nlon*nlat
-      i = mod(m, nlon) + 1
+      i = mod(m, nlon)
+      if (i == 0) then
+        i = nlon
+      endif
       j = int((m-i)/nlon) + 1
       gphi(i, j) = x(m)
     end do
@@ -237,28 +241,28 @@ contains
         d2 = orthodrome(longitudes(x3), latitudes(y3), longitudes(x4), latitudes(y4))
 
         val = -gum(i, j) * dt / d1
-        row = x1 + (y1 - 1) * int(nlon)
+        row = int(x1 + (y1 - 1) * nlon)
         irow(id) = row
         icol(id) = col
         a(id) = val
         id = id + 1
 
         val = gum(i, j) * dt / d1
-        row = x2 + (y2 - 1) * int(nlon)
+        row = int(x2 + (y2 - 1) * nlon)
         irow(id) = row
         icol(id) = col
         a(id) = val
         id = id + 1
 
         val = -gvm(i, j) * dt / d2
-        row = x3 + (y3 - 1) * int(nlon)
+        row = int(x3 + (y3 - 1) * nlon)
         irow(id) = row
         icol(id) = col
         a(id) = val
         id = id + 1
 
         val = gvm(i, j) * dt / d2
-        row = x4 + (y4 - 1) * int(nlon)
+        row = int(x4 + (y4 - 1) * nlon)
         irow(id) = row
         icol(id) = col
         a(id) = val
