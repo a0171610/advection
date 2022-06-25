@@ -224,7 +224,7 @@ contains
     id = 1
     do i = 1, nlon
       do j = 1, nlat
-        row = i + (j-1) * int(nlon)
+        col = i + (j-1) * int(nlon)
         x1 = i + 1; y1 = j
         x2 = i - 1; y2 = j
         x3 = i; y3 = j + 1
@@ -236,29 +236,29 @@ contains
         d1 = orthodrome(longitudes(x1), latitudes(y1), longitudes(x2), latitudes(y2))
         d2 = orthodrome(longitudes(x3), latitudes(y3), longitudes(x4), latitudes(y4))
 
-        val = -gum(i, j) * dt / (2.0d0 * d1)
-        col = x1 + (y1 - 1) * int(nlon)
+        val = -gum(i, j) * dt / d1
+        row = x1 + (y1 - 1) * int(nlon)
         irow(id) = row
         icol(id) = col
         a(id) = val
         id = id + 1
 
-        val = gum(i, j) * dt / (2.0d0 * d1)
-        col = x2 + (y2 - 1) * int(nlon)
+        val = gum(i, j) * dt / d1
+        row = x2 + (y2 - 1) * int(nlon)
         irow(id) = row
         icol(id) = col
         a(id) = val
         id = id + 1
 
-        val = -gvm(i, j) * dt / (2.0d0 * d2)
-        col = x3 + (y3 - 1) * int(nlon)
+        val = -gvm(i, j) * dt / d2
+        row = x3 + (y3 - 1) * int(nlon)
         irow(id) = row
         icol(id) = col
         a(id) = val
         id = id + 1
 
-        val = gvm(i, j) * dt / (2.0d0 * d2)
-        col = x4 + (y4 - 1) * int(nlon)
+        val = gvm(i, j) * dt / d2
+        row = x4 + (y4 - 1) * int(nlon)
         irow(id) = row
         icol(id) = col
         a(id) = val
@@ -280,8 +280,6 @@ contains
     real(8) :: dlonr
 
     dlonr = 0.5d0 * nlon / math_pi
-    gum(:, :) = 0.0d0
-    gvm(:, :) = 0.0d0
     do j = 1, nlat
       do i = 1, nlon
         ! find grid points near departure points
@@ -309,6 +307,8 @@ contains
     real(8) :: xg, yg, zg, xr, yr, zr, xm, ym, zm, xdot, ydot, zdot, u, v, b
     real(8) :: midlon1, midlat1
 
+    gum(:, :) = 0.0d0
+    gvm(:, :) = 0.0d0
     do i = 1, nlon
       do j = 1, nlat
         lon_grid = longitudes(p(i, j))
