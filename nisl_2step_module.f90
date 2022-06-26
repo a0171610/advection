@@ -125,7 +125,7 @@ contains
     real(8), intent(in) :: t, dt
 
     call find_nearest_grid(t, dt)
-    call calculate_resudual_velocity(t, dt)
+    call calculate_resudual_velocity(t-0.5d0*dt, dt)
 
     call legendre_synthesis(sphi_old, gphi_old)
 
@@ -261,6 +261,8 @@ contains
     call solver%solve(b, 0.0d0, x, istop)       ! solve the linear system
   end subroutine solve_sparse_matrix
 
+  ! 時刻t+Δtに格子点にある粒子が、時刻t-Δtにいる場所をdeplon, deplatに格納する
+  ! また、最近接格子点をp, qに格納する
   subroutine find_nearest_grid(t, dt)
     use math_module, only: math_pi, pi2=>math_pi2
     use sphere_module, only: xyz2uv, lonlat2xyz
@@ -301,6 +303,7 @@ contains
     end do
   end subroutine find_nearest_grid
 
+  ! 時刻tにおける残差速度をgum, gvmに格納する
   subroutine calculate_resudual_velocity(t, dt)
     use grid_module, only: latitudes => lat, longitudes => lon
     use math_module, only: math_pi, pi2=>math_pi2
@@ -319,9 +322,9 @@ contains
     gvm(:, :) = 0.0d0
     select case(velocity)
     case("nodiv ")
-      call uv_nodiv(t-0.5d0*dt,longitudes,latitudes,gu,gv)
+      call uv_nodiv(t,longitudes,latitudes,gu,gv)
     case("div   ")
-      call uv_div(t-0.5d0*dt,longitudes,latitudes,gu,gv)
+      call uv_div(t,longitudes,latitudes,gu,gv)
     end select
 
     call interpolate_setuv(gu, gv)
