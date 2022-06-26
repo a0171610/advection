@@ -125,7 +125,6 @@ contains
     real(8), intent(in) :: t, dt
 
     call find_nearest_grid(t, dt, p, q)
-    call calculate_resudual_velocity(t-0.5d0*dt, dt, p, q, gum, gvm)
 
     call legendre_synthesis(sphi_old, gphi_old)
 
@@ -141,6 +140,8 @@ contains
     end do
 
     gphim(:, :) = 0.0d0
+    call find_nearest_grid(t-0.5d0*dt, dt, p, q)
+    call calculate_resudual_velocity(t-dt, dt, p, q, gum, gvm)
     do i = 1, nlon
       do j = 1, nlat
         x1 = i + 1; y1 = j
@@ -168,7 +169,7 @@ contains
       end do
     end do
 
-    call solve_sparse_matrix(0.5d0*dt, b, x)
+    call solve_sparse_matrix(t, dt, b, x)
     do m = 1, nlon*nlat
       i = mod(m, nlon)
       if (i == 0) then
@@ -186,14 +187,14 @@ contains
 
   end subroutine update
 
-  subroutine solve_sparse_matrix(dt, b, x)
+  subroutine solve_sparse_matrix(t, dt, b, x)
     use lsqr_module, only: lsqr_solver_ez
     use sphere_module, only: orthodrome
     use grid_module, only: pole_regrid
     implicit none
 
     integer(8), parameter :: sz = nlat * nlon
-    real(8), intent(in) :: dt
+    real(8), intent(in) :: t, dt
     integer(8) :: x1, y1, x2, y2, x3, y3, x4, y4
     real(8), intent(in) :: b(sz)
     real(8), intent(out) :: x(sz)
@@ -205,6 +206,9 @@ contains
     real(8) :: val, d1, d2
 
     allocate( icol(sz * 5), irow(sz * 5), a(sz * 5) )
+
+    call find_nearest_grid(t+0.5d0*dt, dt, p, q)
+    call calculate_resudual_velocity(t, dt, p, q, gum, gvm)
 
     id = 1
     do i = 1, nlon
@@ -221,28 +225,28 @@ contains
         d1 = orthodrome(longitudes(x1), latitudes(y1), longitudes(x2), latitudes(y2))
         d2 = orthodrome(longitudes(x3), latitudes(y3), longitudes(x4), latitudes(y4))
 
-        val = -gum(i, j) * dt / d1
+        val = -gum(i, j) * dt / (2.0d0 * d1)
         col = int(x1 + (y1 - 1) * nlon)
         irow(id) = row
         icol(id) = col
         a(id) = val
         id = id + 1
 
-        val = gum(i, j) * dt / d1
+        val = gum(i, j) * dt / (2.0d0 * d1)
         col = int(x2 + (y2 - 1) * nlon)
         irow(id) = row
         icol(id) = col
         a(id) = val
         id = id + 1
 
-        val = -gvm(i, j) * dt / d2
+        val = -gvm(i, j) * dt / (2.0d0 * d2)
         col = int(x3 + (y3 - 1) * nlon)
         irow(id) = row
         icol(id) = col
         a(id) = val
         id = id + 1
 
-        val = gvm(i, j) * dt / d2
+        val = gvm(i, j) * dt / (2.0d0 * d2)
         col = int(x4 + (y4 - 1) * nlon)
         irow(id) = row
         icol(id) = col
