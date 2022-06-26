@@ -225,12 +225,12 @@ contains
     real(8), allocatable :: a(:)
     real(8) :: val, d1, d2
 
-    allocate( icol(sz * 4), irow(sz * 4), a(sz * 4) )
+    allocate( icol(sz * 5), irow(sz * 5), a(sz * 5) )
 
     id = 1
     do i = 1, nlon
       do j = 1, nlat
-        col = i + (j-1) * int(nlon)
+        row = i + (j-1) * int(nlon)
         x1 = i + 1; y1 = j
         x2 = i - 1; y2 = j
         x3 = i; y3 = j + 1
@@ -243,33 +243,39 @@ contains
         d2 = orthodrome(longitudes(x3), latitudes(y3), longitudes(x4), latitudes(y4))
 
         val = -gum(i, j) * dt / d1
-        row = int(x1 + (y1 - 1) * nlon)
+        col = int(x1 + (y1 - 1) * nlon)
         irow(id) = row
         icol(id) = col
         a(id) = val
         id = id + 1
 
         val = gum(i, j) * dt / d1
-        row = int(x2 + (y2 - 1) * nlon)
+        col = int(x2 + (y2 - 1) * nlon)
         irow(id) = row
         icol(id) = col
         a(id) = val
         id = id + 1
 
         val = -gvm(i, j) * dt / d2
-        row = int(x3 + (y3 - 1) * nlon)
+        col = int(x3 + (y3 - 1) * nlon)
         irow(id) = row
         icol(id) = col
         a(id) = val
         id = id + 1
 
         val = gvm(i, j) * dt / d2
-        row = int(x4 + (y4 - 1) * nlon)
+        col = int(x4 + (y4 - 1) * nlon)
         irow(id) = row
         icol(id) = col
         a(id) = val
         id = id + 1
       end do
+    end do
+
+    do i = 4*sz+1, 5*sz
+      irow(i) = int(i - 4*sz)
+      icol(i) = int(i - 4*sz)
+      a(i) = 1.0d0
     end do
 
     call solver%initialize(int(sz), int(sz), a, irow, icol) ! use defaults for other optional inputs
