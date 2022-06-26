@@ -114,7 +114,6 @@ contains
     use grid_module, only: pole_regrid
     use uv_module, only: uv_nodiv, uv_div
     use sphere_module, only: orthodrome
-    use upstream_module, only: find_points
     use legendre_transform_module, only: legendre_analysis, legendre_synthesis, &
         legendre_synthesis_dlon, legendre_synthesis_dlat, legendre_synthesis_dlonlat
     use interpolate_module, only: interpolate_set, interpolate_bilinear, interpolate_setd, interpolate_bicubic
@@ -125,28 +124,8 @@ contains
     real(8) :: d1, d2, b(nlon * nlat), x(nlon * nlat)
     real(8), intent(in) :: t, dt
 
-    select case(velocity)
-    case("nodiv ")
-      call uv_nodiv(t,longitudes,latitudes,gu,gv)
-    case("div   ")
-      call uv_div(t,longitudes,latitudes,gu,gv)
-    end select
-
-    call interpolate_setuv(gu, gv)
-
-    call find_points(gu, gv, 0.5d0*dt, mid_time_lon, midlat, deplon, deplat)   ! dtに0.5をかけているのは引数のdtが最初のステップ以外は2.0*deltatを渡しているから
-
-    select case(velocity)
-    case("nodiv ")
-      call uv_nodiv(t-0.5d0*dt,longitudes,latitudes,gu,gv)
-    case("div   ")
-      call uv_div(t-0.5d0*dt,longitudes,latitudes,gu,gv)
-    end select
-
-    call interpolate_setuv(gu, gv)
-
-    call find_nearest_grid()
-    call calculate_resudual_velocity(dt)
+    call find_nearest_grid(t, dt)
+    call calculate_resudual_velocity(t, dt)
 
     call legendre_synthesis(sphi_old, gphi_old)
 
@@ -282,14 +261,29 @@ contains
     call solver%solve(b, 0.0d0, x, istop)       ! solve the linear system
   end subroutine solve_sparse_matrix
 
-  subroutine find_nearest_grid
+  subroutine find_nearest_grid(t, dt)
     use math_module, only: math_pi, pi2=>math_pi2
     use sphere_module, only: xyz2uv, lonlat2xyz
     use grid_module, only: pole_regrid
+    use upstream_module, only: find_points
+    use uv_module, only: uv_div, uv_nodiv
+    use interpolate_module, only: interpolate_setuv
     implicit none
 
     integer(8) :: i, j
     real(8) :: dlonr
+    real(8), intent(in) :: t, dt
+
+    select case(velocity)
+    case("nodiv ")
+      call uv_nodiv(t,longitudes,latitudes,gu,gv)
+    case("div   ")
+      call uv_div(t,longitudes,latitudes,gu,gv)
+    end select
+
+    call interpolate_setuv(gu, gv)
+
+    call find_points(gu, gv, 0.5d0*dt, mid_time_lon, midlat, deplon, deplat)   ! dtに0.5をかけているのは引数のdtが最初のステップ以外は2.0*deltatを渡しているから
 
     dlonr = 0.5d0 * nlon / math_pi
     do j = 1, nlat
@@ -307,13 +301,15 @@ contains
     end do
   end subroutine find_nearest_grid
 
-  subroutine calculate_resudual_velocity(dt)
+  subroutine calculate_resudual_velocity(t, dt)
     use grid_module, only: latitudes => lat, longitudes => lon
     use math_module, only: math_pi, pi2=>math_pi2
     use sphere_module, only: xyz2uv, lonlat2xyz
-    use interpolate_module, only: interpolate_bilinearuv
+    use interpolate_module, only: interpolate_bilinearuv, interpolate_setuv
+    use uv_module, only: uv_nodiv, uv_div
+
     implicit none
-    real(8), intent(in) :: dt
+    real(8), intent(in) :: t, dt
     integer(8) :: i, j
     real(8) :: lon_grid, lat_grid
     real(8) :: xg, yg, zg, xr, yr, zr, xm, ym, zm, xdot, ydot, zdot, u, v, b
@@ -321,6 +317,16 @@ contains
 
     gum(:, :) = 0.0d0
     gvm(:, :) = 0.0d0
+    select case(velocity)
+    case("nodiv ")
+      call uv_nodiv(t-0.5d0*dt,longitudes,latitudes,gu,gv)
+    case("div   ")
+      call uv_div(t-0.5d0*dt,longitudes,latitudes,gu,gv)
+    end select
+
+    call interpolate_setuv(gu, gv)
+    call interpolate_bilinearuv(midlon1, midlat1, u, v)
+
     do i = 1, nlon
       do j = 1, nlat
         lon_grid = longitudes(p(i, j))
