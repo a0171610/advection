@@ -221,9 +221,11 @@ contains
     type(lsqr_solver_ez) :: solver
     integer :: istop
     integer :: i, j, id, row, col
-    integer, dimension(sz * 4) :: icol, irow
-    real(8), dimension(sz * 4) :: a
+    integer, allocatable :: icol(:), irow(:)
+    real(8), allocatable :: a(:)
     real(8) :: val, d1, d2
+
+    allocate( icol(sz * 4), irow(sz * 4), a(sz * 4) )
 
     id = 1
     do i = 1, nlon
