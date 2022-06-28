@@ -155,7 +155,7 @@ contains
         d1 = orthodrome(longitudes(x1), latitudes(y1), longitudes(x2), latitudes(y2))
         d2 = orthodrome(longitudes(x3), latitudes(y3), longitudes(x4), latitudes(y4))
 
-        gphim(i, j) = dgphi(i, j) + gum(i, j) * (gphi_old(x1,y1) - gphi_old(x2,y2)) / d1
+        gphim(i, j) = dgphi(i, j) + gum(i, j) * (gphi_old(x1,y1) - gphi_old(x2,y2)) / (d1 * cos(deplon(i, j)))
         gphim(i, j) = dgphi(i, j) + gvm(i, j) * (gphi_old(x3,y3) - gphi_old(x4,y4)) / d2
       end do
     end do
@@ -176,7 +176,7 @@ contains
         i = nlon
       endif
       j = int((m-i)/nlon) + 1
-      gphi(i, j) = x(m)
+   !   gphi(i, j) = x(m)
     end do
 
     call legendre_analysis(gphi, sphi1)
@@ -225,14 +225,14 @@ contains
         d1 = orthodrome(longitudes(x1), latitudes(y1), longitudes(x2), latitudes(y2))
         d2 = orthodrome(longitudes(x3), latitudes(y3), longitudes(x4), latitudes(y4))
 
-        val = -gum(i, j) * dt / (2.0d0 * d1)
+        val = -gum(i, j) * dt / (2.0d0 * d1 * cos(longitudes(i)))
         col = int(x1 + (y1 - 1) * nlon)
         irow(id) = row
         icol(id) = col
         a(id) = val
         id = id + 1
 
-        val = gum(i, j) * dt / (2.0d0 * d1)
+        val = gum(i, j) * dt / (2.0d0 * d1 * cos(longitudes(i)))
         col = int(x2 + (y2 - 1) * nlon)
         irow(id) = row
         icol(id) = col
