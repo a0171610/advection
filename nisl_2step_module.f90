@@ -2,7 +2,6 @@ module nisl_2step_module
 
   use grid_module, only: nlon, nlat, ntrunc, &
     gu, gv, gphi, gphi_initial, sphi_old, sphi, longitudes=>lon, latitudes=>lat, wgt
-  use mass_module, only: mass_correct
   use time_module, only: conserve, velocity
   private
   
@@ -118,20 +117,18 @@ contains
         legendre_synthesis_dlon, legendre_synthesis_dlat, legendre_synthesis_dlonlat
     use interpolate_module, only: interpolate_set, interpolate_bilinear, interpolate_setd, interpolate_bicubic
     use interpolate_module, only: interpolate_setuv
+    use math_module, only : pir=>math_pir, pih=>math_pih
     implicit none
 
     integer(8) :: i, j, m, x1, y1, x2, y2, x3, y3, x4, y4
     real(8) :: d1, d2, b(nlon * nlat), x(nlon * nlat)
     real(8), intent(in) :: t, dt
+    real(8) :: dlonr, eps
+    real(8), dimension(nlon) :: gphitmp
 
     call find_nearest_grid(t, dt, p, q)
 
     call legendre_synthesis(sphi_old, gphi_old)
-
-    if (conserve) then
-      gmin(:, :) = min(0.0d0, minval(gphi))
-      gmax(:, :) = max(0.0d0, maxval(gphi))
-    end if
 
     do j = 1, nlat
       do i = 1, nlon
@@ -141,26 +138,31 @@ contains
 
     gphim(:, :) = 0.0d0
     call find_nearest_grid(t-0.5d0*dt, dt, p, q)
-    call calculate_resudual_velocity(t-dt, dt, p, q, gum, gvm)
-    do i = 1, nlon
-      do j = 1, nlat
-        x1 = i + 1; y1 = j
-        x2 = i - 1; y2 = j
-        x3 = i; y3 = j + 1
-        x4 = i; y4 = j - 1
-        call pole_regrid(x1, y1)
-        call pole_regrid(x2, y2)
-        call pole_regrid(x3, y3)
-        call pole_regrid(x4, y4)
-        d1 = orthodrome(longitudes(x1), latitudes(y1), longitudes(x2), latitudes(y2))
-        d2 = orthodrome(longitudes(x3), latitudes(y3), longitudes(x4), latitudes(y4))
+    call calculate_resudual_velocity(t-0.5d0*dt, dt, p, q, gum, gvm)
 
-        gphim(i, j) = dgphi(i, j) + gum(i, j) * (gphi_old(x1,y1) - gphi_old(x2,y2)) / (d1 * cos(deplon(i, j)))
-        gphim(i, j) = dgphi(i, j) + gvm(i, j) * (gphi_old(x3,y3) - gphi_old(x4,y4)) / d2
-      end do
+    dlonr = 1.0d0 / (0.25d0*dble(nlon)*acos(-1.0d0))
+    gphix(1,:) = dlonr * (gphi_old(2,:) - gphi_old(nlon,:))
+    gphix(nlon,:) = dlonr * (gphi_old(1,:) - gphi_old(nlon-1,:))
+    do i=2, nlon-1
+      gphix(i,:) = dlonr*(gphi_old(i+1,:) - gphi_old(i-1,:))
+    end do
+    ! d/dphi
+    eps = pih-latitudes(1)
+    gphitmp = cshift(gphi_old(:,1),nlon/2)
+    gphiy(:,1) = (gphitmp-gphi_old(:,2))/(pih+eps-latitudes(2))
+    gphitmp = cshift(gphix(:,1),nlon/2)
+    gphitmp = cshift(gphi_old(:,nlat),nlon/2)
+    gphiy(:,nlat) = (gphitmp-gphi_old(:,nlat-1))/(-pih-eps-latitudes(nlat-1))
+    do j=2, nlat-1
+      gphiy(:,j) = (gphi_old(:,j+1)-gphi_old(:,j-1))/(latitudes(j+1)-latitudes(j-1))
     end do
 
-    gphi(:, :) = gphi(:, :) + 0.5d0 * dt * gphim(:, :)
+    do i = 1, nlon
+      do j = 1, nlat
+        gphim(i, j) = gum(i, j) * gphix(i, j) / cos(midlat(i, j)) + gvm(i, j) * gphiy(i, j)
+        gphi(i, j) = gphi(i, j) + 0.5d0 * dt * gphim(i, j)
+      end do
+    end do
 
     do i = 1, nlon
       do j = 1, nlat
@@ -176,7 +178,7 @@ contains
         i = nlon
       endif
       j = int((m-i)/nlon) + 1
-   !   gphi(i, j) = x(m)
+      gphi(i, j) = x(m)
     end do
 
     call legendre_analysis(gphi, sphi1)
@@ -191,6 +193,7 @@ contains
     use lsqr_module, only: lsqr_solver_ez
     use sphere_module, only: orthodrome
     use grid_module, only: pole_regrid
+    use math_module, only : pih=>math_pih
     implicit none
 
     integer(8), parameter :: sz = nlat * nlon
@@ -203,12 +206,14 @@ contains
     integer :: i, j, id, row, col
     integer, allocatable :: icol(:), irow(:)
     real(8), allocatable :: a(:)
-    real(8) :: val, d1, d2
+    real(8) :: val, dlonr, dlat, eps
 
     allocate( icol(sz * 5), irow(sz * 5), a(sz * 5) )
 
     call find_nearest_grid(t+0.5d0*dt, dt, p, q)
-    call calculate_resudual_velocity(t, dt, p, q, gum, gvm)
+    call calculate_resudual_velocity(t+0.5d0*dt, dt, p, q, gum, gvm)
+
+    dlonr = 1.0d0 / (0.25d0*dble(nlon)*acos(-1.0d0))
 
     id = 1
     do i = 1, nlon
@@ -222,31 +227,37 @@ contains
         call pole_regrid(x2, y2)
         call pole_regrid(x3, y3)
         call pole_regrid(x4, y4)
-        d1 = orthodrome(longitudes(x1), latitudes(y1), longitudes(x2), latitudes(y2))
-        d2 = orthodrome(longitudes(x3), latitudes(y3), longitudes(x4), latitudes(y4))
 
-        val = -gum(i, j) * dt / (2.0d0 * d1 * cos(longitudes(i)))
+        val = -gum(i, j) * dt / (dlonr * cos(longitudes(i)))
         col = int(x1 + (y1 - 1) * nlon)
         irow(id) = row
         icol(id) = col
         a(id) = val
         id = id + 1
 
-        val = gum(i, j) * dt / (2.0d0 * d1 * cos(longitudes(i)))
+        val = gum(i, j) * dt / (dlonr * cos(longitudes(i)))
         col = int(x2 + (y2 - 1) * nlon)
         irow(id) = row
         icol(id) = col
         a(id) = val
-        id = id + 1
+        id = id + 1 
 
-        val = -gvm(i, j) * dt / (2.0d0 * d2)
+        eps = pih - latitudes(1)
+        if (j == 1) then
+          dlat = pih + eps - latitudes(2)
+        elseif (j == nlat) then
+          dlat = -pih-eps-latitudes(nlat-1)
+        else
+          dlat = latitudes(j + 1) - latitudes(j - 1)
+        endif
+        val = -gvm(i, j) * dt / dlat
         col = int(x3 + (y3 - 1) * nlon)
         irow(id) = row
         icol(id) = col
         a(id) = val
         id = id + 1
 
-        val = gvm(i, j) * dt / (2.0d0 * d2)
+        val = gvm(i, j) * dt / dlat
         col = int(x4 + (y4 - 1) * nlon)
         irow(id) = row
         icol(id) = col
@@ -325,18 +336,6 @@ contains
     integer(8), intent(in) :: p_(nlon, nlat), q_(nlon, nlat)
     real(8), intent(out) :: gum_(nlon, nlat), gvm_(nlon, nlat)
 
-    gum_(:, :) = 0.0d0
-    gvm_(:, :) = 0.0d0
-    select case(velocity)
-    case("nodiv ")
-      call uv_nodiv(t,longitudes,latitudes,gu,gv)
-    case("div   ")
-      call uv_div(t,longitudes,latitudes,gu,gv)
-    end select
-
-    call interpolate_setuv(gu, gv)
-    call interpolate_bilinearuv(midlon1, midlat1, u, v)
-
     do i = 1, nlon
       do j = 1, nlat
         lon_grid = longitudes(p_(i, j))
@@ -356,8 +355,8 @@ contains
         ydot = (yg - yr) / dt
         zdot = (zg - zr) / dt
         call xyz2uv(xdot, ydot, zdot, midlon1, midlat1, u, v)  !Richie1987式(49)
-        gum_(i, j) = gum_(i, j) + u
-        gvm_(i, j) = gvm_(i, j) + v
+        gum_(i, j) = u
+        gvm_(i, j) = v
     
         call interpolate_bilinearuv(midlon1, midlat1, u, v)
         gum_(i, j) = gum_(i, j) - u
@@ -366,5 +365,23 @@ contains
     end do
 
   end subroutine calculate_resudual_velocity
+
+  subroutine bicubic_interpolation_set(f)
+    use legendre_transform_module, only: legendre_analysis, legendre_synthesis_dlat, legendre_synthesis_dlon, &
+      legendre_synthesis_dlonlat
+    implicit none
+    integer(8) :: j
+    real(8), intent(in) :: f(nlon, nlat)
+
+    call legendre_analysis(f, sphi1)
+    call legendre_synthesis_dlon(sphi1, gphix)
+    call legendre_synthesis_dlat(sphi1, gphiy)
+    call legendre_synthesis_dlonlat(sphi1, gphixy)
+    do j = 1, nlat
+      gphiy(:,j) = gphiy(:,j) / cos(latitudes(j))
+      gphixy(:,j) = gphixy(:,j) / cos(latitudes(j))
+    end do
+
+  end subroutine bicubic_interpolation_set
 
 end module nisl_2step_module
