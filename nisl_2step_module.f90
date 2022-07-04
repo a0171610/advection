@@ -53,7 +53,7 @@ contains
           write(11,*) longitudes(i), latitudes(j), gphi(i, j)
       end do        
     end do
-    call update(0.0d0, deltat)
+    call update(0.5d0*deltat, deltat)
     write(*, *) 'step = 0 ', "maxval = ", maxval(gphi), 'minval = ', minval(gphi)
 
   end subroutine nisl_2step_init
@@ -140,7 +140,7 @@ contains
     call find_nearest_grid(t-0.5d0*dt, dt, p, q)
     call calculate_resudual_velocity(t-0.5d0*dt, dt, p, q, gum, gvm)
 
-    dlonr = 1.0d0 / (0.25d0*dble(nlon)*acos(-1.0d0))
+    dlonr = 0.25d0 * dble(nlon) * pir
     gphix(1,:) = dlonr * (gphi_old(2,:) - gphi_old(nlon,:))
     gphix(nlon,:) = dlonr * (gphi_old(1,:) - gphi_old(nlon-1,:))
     do i=2, nlon-1
@@ -159,7 +159,8 @@ contains
 
     do i = 1, nlon
       do j = 1, nlat
-        gphim(i, j) = gum(i, j) * gphix(i, j) / cos(midlat(i, j)) + gvm(i, j) * gphiy(i, j)
+        gphim(i, j) = gum(i, j) * gphix(i, j) / cos(latitudes(j)) 
+        gphim(i, j) = gphim(i, j) +  gvm(i, j) * gphiy(i, j) / cos(latitudes(j))
         gphi(i, j) = gphi(i, j) + 0.5d0 * dt * gphim(i, j)
       end do
     end do
@@ -228,14 +229,14 @@ contains
         call pole_regrid(x3, y3)
         call pole_regrid(x4, y4)
 
-        val = -gum(i, j) * dt / (dlonr * cos(longitudes(i)))
+        val = -gum(i, j) * dt / (2.0d0 * dlonr * cos(latitudes(j)))
         col = int(x1 + (y1 - 1) * nlon)
         irow(id) = row
         icol(id) = col
         a(id) = val
         id = id + 1
 
-        val = gum(i, j) * dt / (dlonr * cos(longitudes(i)))
+        val = gum(i, j) * dt / (2.0d0 * dlonr * cos(latitudes(j)))
         col = int(x2 + (y2 - 1) * nlon)
         irow(id) = row
         icol(id) = col
@@ -250,14 +251,14 @@ contains
         else
           dlat = latitudes(j + 1) - latitudes(j - 1)
         endif
-        val = -gvm(i, j) * dt / dlat
+        val = -gvm(i, j) * dt / (2.0d0 * dlat)
         col = int(x3 + (y3 - 1) * nlon)
         irow(id) = row
         icol(id) = col
         a(id) = val
         id = id + 1
 
-        val = gvm(i, j) * dt / dlat
+        val = gvm(i, j) * dt / (2.0d0 * dlat)
         col = int(x4 + (y4 - 1) * nlon)
         irow(id) = row
         icol(id) = col
