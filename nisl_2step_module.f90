@@ -8,8 +8,7 @@ module nisl_2step_module
   integer(8), allocatable, private :: p(:,:), q(:,:)
   real(8), dimension(:,:), allocatable, private :: &
     gphi_old, dgphi, dgphim, gphim, gphix, gphiy, gphixy, &
-    midlon, midlat, deplon, deplat, gum, gvm, gmin, gmax, w, &
-    mid_time_lon, mid_time_lat
+    midlon, midlat, deplon, deplat, gum, gvm, gmin, gmax, w
   complex(8), dimension(:,:), allocatable, private :: sphi1
 
   private :: update
@@ -28,7 +27,6 @@ contains
     allocate(sphi1(0:ntrunc, 0:ntrunc),gphi_old(nlon, nlat))
     allocate(gphim(nlon, nlat),dgphi(nlon, nlat),dgphim(nlon, nlat))
     allocate(midlon(nlon, nlat), midlat(nlon, nlat))
-    allocate(mid_time_lon(nlon, nlat), mid_time_lat(nlon, nlat))
     allocate(deplon(nlon, nlat), deplat(nlon, nlat), p(nlon, nlat), q(nlon, nlat))
     allocate(gum(nlon, nlat), gvm(nlon, nlat))
     allocate(gphix(nlon, nlat), gphiy(nlon, nlat), gphixy(nlon, nlat))
@@ -38,14 +36,12 @@ contains
     call legendre_synthesis(sphi_old,gphi_old)
     gphi(:, :) = gphi_old(:, :)
 
-    if (conserve) then
-      allocate(gmax(nlon,nlat),gmin(nlon,nlat),w(nlon,nlat))
-      do j=1, nlat
-        w(:,j) = wgt(j)
+    do i = 1, nlon
+      do j = 1, nlat
+        midlat(i, j) = latitudes(j)
+        midlon(i, j) = longitudes(i)
       end do
-      gmin(:,:) = minval(gphi)
-      gmax(:,:) = maxval(gphi)
-    endif
+    end do
 
     open(11, file="animation.txt")
     do i = 1, nlon
@@ -159,8 +155,8 @@ contains
 
     do i = 1, nlon
       do j = 1, nlat
-        gphim(i, j) = gum(i, j) * gphix(i, j) / cos(latitudes(j)) 
-        gphim(i, j) = gphim(i, j) +  gvm(i, j) * gphiy(i, j) / cos(latitudes(j))
+        gphim(i, j) = gum(i, j) * gphix(i, j) / cos(deplat(i, j))
+        gphim(i, j) = gphim(i, j) +  gvm(i, j) * gphiy(i, j)
         gphi(i, j) = gphi(i, j) + 0.5d0 * dt * gphim(i, j)
       end do
     end do
@@ -184,7 +180,7 @@ contains
 
     call legendre_analysis(gphi, sphi1)
     do m = 0, ntrunc
-      sphi_old(m : ntrunc, m) = sphi(m : ntrunc, m)       
+      sphi_old(m : ntrunc, m) = sphi(m : ntrunc, m)
       sphi(m : ntrunc, m) = sphi1(m : ntrunc, m)
     enddo
 
@@ -194,7 +190,7 @@ contains
     use lsqr_module, only: lsqr_solver_ez
     use sphere_module, only: orthodrome
     use grid_module, only: pole_regrid
-    use math_module, only : pih=>math_pih
+    use math_module, only : pih=>math_pih, pir=>math_pir
     implicit none
 
     integer(8), parameter :: sz = nlat * nlon
@@ -214,7 +210,7 @@ contains
     call find_nearest_grid(t+0.5d0*dt, dt, p, q)
     call calculate_resudual_velocity(t+0.5d0*dt, dt, p, q, gum, gvm)
 
-    dlonr = 1.0d0 / (0.25d0*dble(nlon)*acos(-1.0d0))
+    dlonr = 0.25d0 * dble(nlon) * pir
 
     id = 1
     do i = 1, nlon
@@ -302,7 +298,7 @@ contains
 
     call interpolate_setuv(gu, gv)
 
-    call find_points(gu, gv, 0.5d0*dt, mid_time_lon, midlat, deplon, deplat)   ! dtに0.5をかけているのは引数のdtが最初のステップ以外は2.0*deltatを渡しているから
+    call find_points(gu, gv, 0.5d0*dt, midlon, midlat, deplon, deplat)   ! dtに0.5をかけているのは引数のdtが最初のステップ以外は2.0*deltatを渡しているから
 
     dlonr = 0.5d0 * nlon / math_pi
     do j = 1, nlat
