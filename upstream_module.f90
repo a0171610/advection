@@ -9,7 +9,7 @@ module upstream_module
     implicit none
     private
   
-    integer(8), public :: itermax = 5
+    integer(8), public :: itermax = 50
     real(8), public :: small = 1.0d-10
   
     public :: find_points
@@ -23,7 +23,7 @@ module upstream_module
   
       real(8), dimension(:,:), intent(in) :: u, v
       real(8), intent(in) :: dt
-      real(8), dimension(:,:), intent(out) :: midlon, midlat
+      real(8), dimension(:,:), intent(inout) :: midlon, midlat
       real(8), dimension(:, :), intent(out) :: deplon, deplat
 
       integer(8) :: nx, ny, i, j, step
@@ -52,7 +52,7 @@ module upstream_module
           lat = latitudes(j)
           call lonlat2xyz(lon, lat, xg, yg, zg) ! transform into Cartesian coordinates
           ! r = g as an initial point for the 1st time step, 最初midlat, midlonには格子点上の値が入っている
-          call lonlat2xyz(midlon(i,j), midlat(i,j), x0, y0, z0) 
+          call lonlat2xyz(midlon(i, j), midlat(i, j), x0, y0, z0)
           step = 1
           do 
             call uv2xyz(un,vn,lon,lat,xd,yd,zd) ! normalized Cartesian velocity

@@ -8,7 +8,7 @@ module nisl_2step_module
   integer(8), allocatable, private :: p(:,:), q(:,:)
   real(8), dimension(:,:), allocatable, private :: &
     gphi_old, dgphi, dgphim, gphim, gphix, gphiy, gphixy, &
-    midlon, midlat, deplon, deplat, gum, gvm, gmin, gmax, w
+    midlon, midlat, deplon, deplat, gum, gvm
   complex(8), dimension(:,:), allocatable, private :: sphi1
 
   private :: update
@@ -101,7 +101,6 @@ contains
       endif
     end do
     close(11)
-    
   end subroutine nisl_2step_timeint
 
   ! dt = leapfrog法の+と-の時刻差, t=中央の時刻
@@ -116,8 +115,8 @@ contains
     use math_module, only : pir=>math_pir, pih=>math_pih
     implicit none
 
-    integer(8) :: i, j, m, x1, y1, x2, y2, x3, y3, x4, y4
-    real(8) :: d1, d2, b(nlon * nlat), x(nlon * nlat)
+    integer(8) :: i, j, m
+    real(8) :: b(nlon * nlat), x(nlon * nlat)
     real(8), intent(in) :: t, dt
     real(8) :: dlonr, eps
     real(8), dimension(nlon) :: gphitmp
@@ -134,7 +133,7 @@ contains
 
     gphim(:, :) = 0.0d0
     call find_nearest_grid(t-0.5d0*dt, dt, p, q)
-    call calculate_resudual_velocity(t-0.5d0*dt, dt, p, q, gum, gvm)
+    call calculate_resudual_velocity(dt, p, q, gum, gvm)
 
     dlonr = 0.25d0 * dble(nlon) * pir
     gphix(1,:) = dlonr * (gphi_old(2,:) - gphi_old(nlon,:))
@@ -146,7 +145,6 @@ contains
     eps = pih-latitudes(1)
     gphitmp = cshift(gphi_old(:,1),nlon/2)
     gphiy(:,1) = (gphitmp-gphi_old(:,2))/(pih+eps-latitudes(2))
-    gphitmp = cshift(gphix(:,1),nlon/2)
     gphitmp = cshift(gphi_old(:,nlat),nlon/2)
     gphiy(:,nlat) = (gphitmp-gphi_old(:,nlat-1))/(-pih-eps-latitudes(nlat-1))
     do j=2, nlat-1
@@ -208,7 +206,7 @@ contains
     allocate( icol(sz * 5), irow(sz * 5), a(sz * 5) )
 
     call find_nearest_grid(t+0.5d0*dt, dt, p, q)
-    call calculate_resudual_velocity(t+0.5d0*dt, dt, p, q, gum, gvm)
+    call calculate_resudual_velocity(dt, p, q, gum, gvm)
 
     dlonr = 0.25d0 * dble(nlon) * pir
 
@@ -317,7 +315,7 @@ contains
   end subroutine find_nearest_grid
 
   ! 時刻tにおける残差速度をgum, gvmに格納する
-  subroutine calculate_resudual_velocity(t, dt, p_, q_, gum_, gvm_)
+  subroutine calculate_resudual_velocity(dt, p_, q_, gum_, gvm_)
     use grid_module, only: latitudes => lat, longitudes => lon
     use math_module, only: math_pi, pi2=>math_pi2
     use sphere_module, only: xyz2uv, lonlat2xyz
@@ -325,11 +323,10 @@ contains
     use uv_module, only: uv_nodiv, uv_div
 
     implicit none
-    real(8), intent(in) :: t, dt
+    real(8), intent(in) :: dt
     integer(8) :: i, j
     real(8) :: lon_grid, lat_grid
     real(8) :: xg, yg, zg, xr, yr, zr, xm, ym, zm, xdot, ydot, zdot, u, v, b
-    real(8) :: midlon1, midlat1
     integer(8), intent(in) :: p_(nlon, nlat), q_(nlon, nlat)
     real(8), intent(out) :: gum_(nlon, nlat), gvm_(nlon, nlat)
 
@@ -345,40 +342,22 @@ contains
         xm = b * (xg + xr)
         ym = b * (yg + yr)
         zm = b * (zg + zr)
-        midlon1 = modulo(atan2(ym, xm) + pi2, pi2)
-        midlat1 = asin(zm)
+        midlon(i, j) = modulo(atan2(ym, xm) + pi2, pi2)
+        midlat(i, j) = asin(zm)
 
         xdot = (xg - xr) / dt
         ydot = (yg - yr) / dt
         zdot = (zg - zr) / dt
-        call xyz2uv(xdot, ydot, zdot, midlon1, midlat1, u, v)  !Richie1987式(49)
+        call xyz2uv(xdot, ydot, zdot, midlon(i, j), midlat(i, j), u, v)  !Richie1987式(49)
         gum_(i, j) = u
         gvm_(i, j) = v
     
-        call interpolate_bilinearuv(midlon1, midlat1, u, v)
+        call interpolate_bilinearuv(midlon(i, j), midlat(i, j), u, v)
         gum_(i, j) = gum_(i, j) - u
         gvm_(i, j) = gvm_(i, j) - v
       end do
     end do
 
   end subroutine calculate_resudual_velocity
-
-  subroutine bicubic_interpolation_set(f)
-    use legendre_transform_module, only: legendre_analysis, legendre_synthesis_dlat, legendre_synthesis_dlon, &
-      legendre_synthesis_dlonlat
-    implicit none
-    integer(8) :: j
-    real(8), intent(in) :: f(nlon, nlat)
-
-    call legendre_analysis(f, sphi1)
-    call legendre_synthesis_dlon(sphi1, gphix)
-    call legendre_synthesis_dlat(sphi1, gphiy)
-    call legendre_synthesis_dlonlat(sphi1, gphixy)
-    do j = 1, nlat
-      gphiy(:,j) = gphiy(:,j) / cos(latitudes(j))
-      gphixy(:,j) = gphixy(:,j) / cos(latitudes(j))
-    end do
-
-  end subroutine bicubic_interpolation_set
 
 end module nisl_2step_module
