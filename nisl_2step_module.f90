@@ -133,7 +133,7 @@ contains
 
     gphim(:, :) = 0.0d0
     call find_nearest_grid(t-0.5d0*dt, dt, p, q)
-    call calculate_resudual_velocity(dt, p, q, gum, gvm)
+    call calculate_resudual_velocity(dt, p, q, gum, gvm, .true.)
 
     gphix(1,:) = (gphi_old(2,:) - gphi_old(nlon,:)) / (longitudes(3) - longitudes(1))
     gphix(nlon,:) = (gphi_old(1,:) - gphi_old(nlon-1,:)) / (longitudes(3) - longitudes(1))
@@ -206,7 +206,7 @@ contains
     allocate( icol(sz * 5), irow(sz * 5), a(sz * 5) )
 
     call find_nearest_grid(t+0.5d0*dt, dt, p, q)
-    call calculate_resudual_velocity(dt, p, q, gum, gvm)
+    call calculate_resudual_velocity(dt, p, q, gum, gvm, .false.)
 
     dlonr = longitudes(3) - longitudes(1)
 
@@ -315,7 +315,7 @@ contains
   end subroutine find_nearest_grid
 
   ! 時刻tにおける残差速度をgum, gvmに格納する
-  subroutine calculate_resudual_velocity(dt, p_, q_, gum_, gvm_)
+  subroutine calculate_resudual_velocity(dt, p_, q_, gum_, gvm_, sig)
     use grid_module, only: latitudes => lat, longitudes => lon
     use math_module, only: math_pi, pi2=>math_pi2
     use sphere_module, only: xyz2uv, lonlat2xyz
@@ -329,6 +329,7 @@ contains
     real(8) :: xg, yg, zg, xr, yr, zr, xm, ym, zm, xdot, ydot, zdot, u, v, b
     integer(8), intent(in) :: p_(nlon, nlat), q_(nlon, nlat)
     real(8), intent(out) :: gum_(nlon, nlat), gvm_(nlon, nlat)
+    logical, intent(in) :: sig
 
     do i = 1, nlon
       do j = 1, nlat
@@ -348,11 +349,19 @@ contains
         xdot = (xg - xr) / dt
         ydot = (yg - yr) / dt
         zdot = (zg - zr) / dt
-        call xyz2uv(xdot, ydot, zdot, midlon(i, j), midlat(i, j), u, v)  !Richie1987式(49)
+        if (sig) then
+          call xyz2uv(xdot, ydot, zdot, deplon(i, j), deplat(i, j), u, v)  !Richie1987式(49)
+        else
+          call xyz2uv(xdot, ydot, zdot, longitudes(i), latitudes(j), u, v)
+        endif
         gum_(i, j) = u
         gvm_(i, j) = v
     
-        call interpolate_bilinearuv(midlon(i, j), midlat(i, j), u, v)
+        if (sig) then
+          call xyz2uv(xdot, ydot, zdot, deplon(i, j), deplat(i, j), u, v)  !Richie1987式(49)
+        else
+          call xyz2uv(xdot, ydot, zdot, longitudes(i), latitudes(j), u, v)
+        endif
         gum_(i, j) = gum_(i, j) - u
         gvm_(i, j) = gvm_(i, j) - v
       end do
