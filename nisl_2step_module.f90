@@ -118,7 +118,7 @@ contains
     integer(8) :: i, j, m
     real(8) :: b(nlon * nlat), x(nlon * nlat)
     real(8), intent(in) :: t, dt
-    real(8) :: dlonr, eps
+    real(8) :: eps
     real(8), dimension(nlon) :: gphitmp
 
     call find_nearest_grid(t, dt, p, q)
@@ -135,11 +135,10 @@ contains
     call find_nearest_grid(t-0.5d0*dt, dt, p, q)
     call calculate_resudual_velocity(dt, p, q, gum, gvm)
 
-    dlonr = 0.25d0 * dble(nlon) * pir
-    gphix(1,:) = dlonr * (gphi_old(2,:) - gphi_old(nlon,:))
-    gphix(nlon,:) = dlonr * (gphi_old(1,:) - gphi_old(nlon-1,:))
+    gphix(1,:) = (gphi_old(2,:) - gphi_old(nlon,:)) / (longitudes(3) - longitudes(1))
+    gphix(nlon,:) = (gphi_old(1,:) - gphi_old(nlon-1,:)) / (longitudes(3) - longitudes(1))
     do i=2, nlon-1
-      gphix(i,:) = dlonr*(gphi_old(i+1,:) - gphi_old(i-1,:))
+      gphix(i,:) = (gphi_old(i+1,:) - gphi_old(i-1,:)) / (longitudes(3) - longitudes(1))
     end do
     ! d/dphi
     eps = pih-latitudes(1)
@@ -151,10 +150,11 @@ contains
       gphiy(:,j) = (gphi_old(:,j+1)-gphi_old(:,j-1))/(latitudes(j+1)-latitudes(j-1))
     end do
 
+    call legendre_synthesis_dlon(sphi_old, dgphi)
+
     do i = 1, nlon
       do j = 1, nlat
-        gphim(i, j) = gum(i, j) * gphix(i, j) / cos(deplat(i, j))
-        gphim(i, j) = gphim(i, j) +  gvm(i, j) * gphiy(i, j)
+        gphim(i, j) = gum(i, j) * gphix(i, j) / cos(deplat(i, j)) +  gvm(i, j) * gphiy(i, j)
         gphi(i, j) = gphi(i, j) + 0.5d0 * dt * gphim(i, j)
       end do
     end do
@@ -208,12 +208,12 @@ contains
     call find_nearest_grid(t+0.5d0*dt, dt, p, q)
     call calculate_resudual_velocity(dt, p, q, gum, gvm)
 
-    dlonr = 0.25d0 * dble(nlon) * pir
+    dlonr = longitudes(3) - longitudes(1)
 
     id = 1
     do i = 1, nlon
       do j = 1, nlat
-        row = i + (j-1) * int(nlon)
+        col = i + (j-1) * int(nlon)
         x1 = i + 1; y1 = j
         x2 = i - 1; y2 = j
         x3 = i; y3 = j + 1
@@ -223,15 +223,15 @@ contains
         call pole_regrid(x3, y3)
         call pole_regrid(x4, y4)
 
-        val = -gum(i, j) * dt / (2.0d0 * dlonr * cos(latitudes(j)))
-        col = int(x1 + (y1 - 1) * nlon)
+        val = gum(i, j) * dt / (2.0d0 * dlonr * cos(latitudes(j)))
+        row = int(x1 + (y1 - 1) * nlon)
         irow(id) = row
         icol(id) = col
         a(id) = val
         id = id + 1
 
-        val = gum(i, j) * dt / (2.0d0 * dlonr * cos(latitudes(j)))
-        col = int(x2 + (y2 - 1) * nlon)
+        val = -gum(i, j) * dt / (2.0d0 * dlonr * cos(latitudes(j)))
+        row = int(x2 + (y2 - 1) * nlon)
         irow(id) = row
         icol(id) = col
         a(id) = val
@@ -245,15 +245,15 @@ contains
         else
           dlat = latitudes(j + 1) - latitudes(j - 1)
         endif
-        val = -gvm(i, j) * dt / (2.0d0 * dlat)
-        col = int(x3 + (y3 - 1) * nlon)
+        val = gvm(i, j) * dt / (2.0d0 * dlat)
+        row = int(x3 + (y3 - 1) * nlon)
         irow(id) = row
         icol(id) = col
         a(id) = val
         id = id + 1
 
-        val = gvm(i, j) * dt / (2.0d0 * dlat)
-        col = int(x4 + (y4 - 1) * nlon)
+        val = -gvm(i, j) * dt / (2.0d0 * dlat)
+        row = int(x4 + (y4 - 1) * nlon)
         irow(id) = row
         icol(id) = col
         a(id) = val
