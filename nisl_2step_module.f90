@@ -68,7 +68,7 @@ contains
     integer(8) :: i, j, k
 
     do i = 1, nstep
-      call update((i- 0.5d0)*deltat)
+      call update((i- 1.0d0)*deltat)
       write(*, *) 'step = ', i, "maxval = ", maxval(gphi), 'minval = ', minval(gphi)
       if ( mod(i, hstep) == 0 ) then
         do j = 1, nlon
@@ -109,6 +109,7 @@ contains
     use interpolate_module, only: interpolate_set, interpolate_bilinear, interpolate_setd, interpolate_bicubic
     use interpolate_module, only: interpolate_setuv
     use math_module, only : pir=>math_pir, pih=>math_pih
+    use upstream_module, only: find_points
     implicit none
 
     integer(8) :: i, j, m
@@ -117,19 +118,15 @@ contains
     real(8) :: eps
     real(8), dimension(nlon) :: gphitmp
 
-    call find_nearest_grid(t, p, q)
-
     call legendre_synthesis(sphi_old, gphi_old)
+
+    call calculate_residual_velocity(t)
 
     do j = 1, nlat
       do i = 1, nlon
         gphi(i,j) = gphi_old(p(i, j), q(i, j))
       end do
     end do
-
-    gphim(:, :) = 0.0d0
-    call find_nearest_grid(t-0.5d0*deltat, p, q)
-    call calculate_resudual_velocity(p, q, gum, gvm, .true.)
 
     gphix(1,:) = (gphi_old(2,:) - gphi_old(nlon,:)) / (longitudes(3) - longitudes(1))
     gphix(nlon,:) = (gphi_old(1,:) - gphi_old(nlon-1,:)) / (longitudes(3) - longitudes(1))
@@ -146,12 +143,10 @@ contains
       gphiy(:,j) = (gphi_old(:,j+1)-gphi_old(:,j-1))/(latitudes(j+1)-latitudes(j-1))
     end do
 
-    call legendre_synthesis_dlon(sphi_old, dgphi)
-
     do i = 1, nlon
       do j = 1, nlat
         gphim(i, j) = gum(i, j) * gphix(i, j) / cos(deplat(i, j)) +  gvm(i, j) * gphiy(i, j)
-        gphi(i, j) = gphi(i, j) + 0.5d0 * deltat * gphim(i, j)
+        gphi(i, j) = gphi(i, j) + deltat * gphim(i, j)
       end do
     end do
 
@@ -201,10 +196,9 @@ contains
 
     allocate( icol(sz * 5), irow(sz * 5), a(sz * 5) )
 
-    call find_nearest_grid(t+0.5d0*deltat, p, q)
-    call calculate_resudual_velocity(p, q, gum, gvm, .false.)
-
     dlonr = longitudes(3) - longitudes(1)
+
+    call calculate_residual_velocity(t + deltat)
 
     id = 1
     do i = 1, nlon
@@ -267,70 +261,33 @@ contains
     call solver%solve(b, 0.0d0, x, istop)       ! solve the linear system
   end subroutine solve_sparse_matrix
 
-  ! 時刻t+Δtに格子点にある粒子が、時刻t-Δtにいる場所をdeplon, deplatに格納する
-  ! また、最近接格子点をp, qに格納する
-  subroutine find_nearest_grid(t, p_, q_)
-    use math_module, only: math_pi, pi2=>math_pi2
-    use sphere_module, only: xyz2uv, lonlat2xyz
-    use grid_module, only: pole_regrid
+  subroutine calculate_residual_velocity(t)
     use upstream_module, only: find_points
+    use math_module, only: pi2=>math_pi2
+    use interpolate_module, only: interpolate_bilinearuv, interpolate_setuv
+    use sphere_module, only: xyz2uv, lonlat2xyz
     use uv_module, only: uv_div, uv_nodiv
-    use interpolate_module, only: interpolate_setuv
     implicit none
-
-    integer(8) :: i, j
-    real(8) :: dlonr
     real(8), intent(in) :: t
-    integer(8), intent(out) :: p_(nlon, nlat), q_(nlon, nlat)
+    integer(8) :: i, j
+    real(8) :: xg, yg, zg, xr, yr, zr, xm, ym, zm, xdot, ydot, zdot, u, v, b, midlon1, midlat1
 
     select case(velocity)
-    case("nodiv ")
+    case("nodiv")
       call uv_nodiv(t,longitudes,latitudes,gu,gv)
-    case("div   ")
+    case("div")
       call uv_div(t,longitudes,latitudes,gu,gv)
+    case default
+      print *, "No matching model for", velocity
     end select
-
     call interpolate_setuv(gu, gv)
 
-    call find_points(gu, gv, 0.5d0*deltat, midlon, midlat, deplon, deplat)   ! dtに0.5をかけているのは引数のdtが最初のステップ以外は2.0*deltatを渡しているから
-
-    dlonr = 0.5d0 * nlon / math_pi
-    do j = 1, nlat
-      do i = 1, nlon
-        ! find grid points near departure points
-
-        p_(i, j) = int(anint( deplon(i, j) * dlonr + 1.0d0 ))
-        if ( p_(i,j) > nlon ) then
-          p_(i, j) = p_(i, j) - nlon
-        end if
-        ! lat = (J+1-2j)pi/(2J+1)
-        q_(i, j) = int(anint( 0.5d0 * (nlat + 1.0d0 - (2.0d0*dble(nlat)+1.0d0)*deplat(i, j) / math_pi) ))  !latitudesは大きい順で詰められているので注意
-        call pole_regrid(p_(i, j), q_(i, j))
-      end do
-    end do
-  end subroutine find_nearest_grid
-
-  ! 時刻tにおける残差速度をgum, gvmに格納する
-  subroutine calculate_resudual_velocity(p_, q_, gum_, gvm_, sig)
-    use grid_module, only: latitudes => lat, longitudes => lon
-    use math_module, only: math_pi, pi2=>math_pi2
-    use sphere_module, only: xyz2uv, lonlat2xyz
-    use interpolate_module, only: interpolate_bilinearuv, interpolate_setuv
-    use uv_module, only: uv_nodiv, uv_div
-
-    implicit none
-    integer(8) :: i, j
-    real(8) :: lon_grid, lat_grid
-    real(8) :: xg, yg, zg, xr, yr, zr, xm, ym, zm, xdot, ydot, zdot, u, v, b
-    integer(8), intent(in) :: p_(nlon, nlat), q_(nlon, nlat)
-    real(8), intent(out) :: gum_(nlon, nlat), gvm_(nlon, nlat)
-    logical, intent(in) :: sig
+    call find_points(gu, gv, deltat, midlon, midlat, deplon, deplat)
+    call find_nearest_grid
 
     do i = 1, nlon
       do j = 1, nlat
-        lon_grid = longitudes(p_(i, j))
-        lat_grid = latitudes(q_(i, j))
-        call lonlat2xyz(lon_grid, lat_grid, xr, yr, zr)
+        call lonlat2xyz(longitudes(p(i, j)), latitudes(q(i , j)), xr, yr, zr)
         ! arrival points
         call lonlat2xyz(longitudes(i), latitudes(j), xg, yg, zg)
 
@@ -338,30 +295,49 @@ contains
         xm = b * (xg + xr)
         ym = b * (yg + yr)
         zm = b * (zg + zr)
-        midlon(i, j) = modulo(atan2(ym, xm) + pi2, pi2)
-        midlat(i, j) = asin(zm)
+        midlon1 = modulo(atan2(ym, xm) + pi2, pi2)
+        midlat1 = asin(zm)
 
-        xdot = (xg - xr) / deltat
-        ydot = (yg - yr) / deltat
-        zdot = (zg - zr) / deltat
-        if (sig) then
-          call xyz2uv(xdot, ydot, zdot, deplon(i, j), deplat(i, j), u, v)  !Richie1987式(49)
-        else
-          call xyz2uv(xdot, ydot, zdot, longitudes(i), latitudes(j), u, v)
-        endif
-        gum_(i, j) = u
-        gvm_(i, j) = v
-    
-        if (sig) then
-          call xyz2uv(xdot, ydot, zdot, deplon(i, j), deplat(i, j), u, v)  !Richie1987式(49)
-        else
-          call xyz2uv(xdot, ydot, zdot, longitudes(i), latitudes(j), u, v)
-        endif
-        gum_(i, j) = gum_(i, j) - u
-        gvm_(i, j) = gvm_(i, j) - v
+        xdot = (xg - xr) / (2.0d0 * deltat)
+        ydot = (yg - yr) / (2.0d0 * deltat)
+        zdot = (zg - zr) / (2.0d0 * deltat)
+        call xyz2uv(xdot, ydot, zdot, midlon1, midlat1, u, v)  !Richie1987式(49)
+        gum(i, j) = gum(i, j) + u
+        gvm(i, j) = gvm(i, j) + v
+
+        call interpolate_bilinearuv(midlon1, midlat1, u, v)
+        gum(i, j) = gum(i, j) - u
+        gvm(i, j) = gvm(i, j) - v
+      enddo
+    enddo
+
+  end subroutine calculate_residual_velocity
+
+  subroutine find_nearest_grid
+    use math_module, only: math_pi, pi2=>math_pi2
+    use sphere_module, only: xyz2uv, lonlat2xyz
+    use grid_module, only: pole_regrid
+    implicit none
+
+    integer(8) :: i, j
+    real(8) :: dlonr
+
+    dlonr = 0.5d0 * nlon / math_pi
+    gum(:, :) = 0.0d0
+    gvm(:, :) = 0.0d0
+    do j = 1, nlat
+      do i = 1, nlon
+        ! find grid points near departure points
+
+        p(i, j) = int(anint( deplon(i, j) * dlonr + 1.0d0 ))
+        if ( p(i,j) > nlon ) then
+          p(i, j) = p(i, j) - nlon
+        end if
+        ! lat = (J+1-2j)pi/(2J+1)
+        q(i, j) = int(anint( 0.5d0 * (nlat + 1.0d0 - (2.0d0*dble(nlat)+1.0d0)*deplat(i, j) / math_pi) ))  !latitudesは大きい順で詰められているので注意
+        call pole_regrid(p(i, j), q(i, j))
       end do
     end do
-
-  end subroutine calculate_resudual_velocity
+  end subroutine  find_nearest_grid
 
 end module nisl_2step_module
