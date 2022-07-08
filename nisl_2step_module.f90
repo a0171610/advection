@@ -2,7 +2,7 @@ module nisl_2step_module
 
   use grid_module, only: nlon, nlat, ntrunc, &
     gu, gv, gphi, gphi_initial, sphi_old, sphi, longitudes=>lon, latitudes=>lat, wgt
-  use time_module, only: conserve, velocity
+  use time_module, only: deltat, velocity
   private
   
   integer(8), allocatable, private :: p(:,:), q(:,:)
@@ -17,7 +17,6 @@ module nisl_2step_module
 contains
 
   subroutine nisl_2step_init()
-    use time_module, only: deltat
     use interpolate_module, only: interpolate_init
     use legendre_transform_module, only: legendre_synthesis
     implicit none
@@ -49,9 +48,6 @@ contains
           write(11,*) longitudes(i), latitudes(j), gphi(i, j)
       end do        
     end do
-    call update(0.5d0*deltat, deltat)
-    write(*, *) 'step = 0 ', "maxval = ", maxval(gphi), 'minval = ', minval(gphi)
-
   end subroutine nisl_2step_init
 
   subroutine nisl_2step_clean()
@@ -65,14 +61,14 @@ contains
   end subroutine nisl_2step_clean
 
   subroutine nisl_2step_timeint()
-    use time_module, only: nstep, deltat, hstep, field
+    use time_module, only: nstep, hstep, field
     use legendre_transform_module, only: legendre_synthesis
     implicit none
 
     integer(8) :: i, j, k
 
-    do i = 2, nstep
-      call update((i- 1)*deltat, 2.0d0*deltat)
+    do i = 1, nstep
+      call update((i- 0.5d0)*deltat)
       write(*, *) 'step = ', i, "maxval = ", maxval(gphi), 'minval = ', minval(gphi)
       if ( mod(i, hstep) == 0 ) then
         do j = 1, nlon
@@ -104,7 +100,7 @@ contains
   end subroutine nisl_2step_timeint
 
   ! dt = leapfrog法の+と-の時刻差, t=中央の時刻
-  subroutine update(t, dt)
+  subroutine update(t)
     use grid_module, only: pole_regrid
     use uv_module, only: uv_nodiv, uv_div
     use sphere_module, only: orthodrome
@@ -117,11 +113,11 @@ contains
 
     integer(8) :: i, j, m
     real(8) :: b(nlon * nlat), x(nlon * nlat)
-    real(8), intent(in) :: t, dt
+    real(8), intent(in) :: t
     real(8) :: eps
     real(8), dimension(nlon) :: gphitmp
 
-    call find_nearest_grid(t, dt, p, q)
+    call find_nearest_grid(t, p, q)
 
     call legendre_synthesis(sphi_old, gphi_old)
 
@@ -132,8 +128,8 @@ contains
     end do
 
     gphim(:, :) = 0.0d0
-    call find_nearest_grid(t-0.5d0*dt, dt, p, q)
-    call calculate_resudual_velocity(dt, p, q, gum, gvm, .true.)
+    call find_nearest_grid(t-0.5d0*deltat, p, q)
+    call calculate_resudual_velocity(p, q, gum, gvm, .true.)
 
     gphix(1,:) = (gphi_old(2,:) - gphi_old(nlon,:)) / (longitudes(3) - longitudes(1))
     gphix(nlon,:) = (gphi_old(1,:) - gphi_old(nlon-1,:)) / (longitudes(3) - longitudes(1))
@@ -155,7 +151,7 @@ contains
     do i = 1, nlon
       do j = 1, nlat
         gphim(i, j) = gum(i, j) * gphix(i, j) / cos(deplat(i, j)) +  gvm(i, j) * gphiy(i, j)
-        gphi(i, j) = gphi(i, j) + 0.5d0 * dt * gphim(i, j)
+        gphi(i, j) = gphi(i, j) + 0.5d0 * deltat * gphim(i, j)
       end do
     end do
 
@@ -166,7 +162,7 @@ contains
       end do
     end do
 
-    call solve_sparse_matrix(t, dt, b, x)
+    call solve_sparse_matrix(t, b, x)
     do m = 1, nlon*nlat
       i = mod(m, nlon)
       if (i == 0) then
@@ -184,7 +180,7 @@ contains
 
   end subroutine update
 
-  subroutine solve_sparse_matrix(t, dt, b, x)
+  subroutine solve_sparse_matrix(t, b, x)
     use lsqr_module, only: lsqr_solver_ez
     use sphere_module, only: orthodrome
     use grid_module, only: pole_regrid
@@ -192,7 +188,7 @@ contains
     implicit none
 
     integer(8), parameter :: sz = nlat * nlon
-    real(8), intent(in) :: t, dt
+    real(8), intent(in) :: t
     integer(8) :: x1, y1, x2, y2, x3, y3, x4, y4
     real(8), intent(in) :: b(sz)
     real(8), intent(out) :: x(sz)
@@ -205,8 +201,8 @@ contains
 
     allocate( icol(sz * 5), irow(sz * 5), a(sz * 5) )
 
-    call find_nearest_grid(t+0.5d0*dt, dt, p, q)
-    call calculate_resudual_velocity(dt, p, q, gum, gvm, .false.)
+    call find_nearest_grid(t+0.5d0*deltat, p, q)
+    call calculate_resudual_velocity(p, q, gum, gvm, .false.)
 
     dlonr = longitudes(3) - longitudes(1)
 
@@ -223,14 +219,14 @@ contains
         call pole_regrid(x3, y3)
         call pole_regrid(x4, y4)
 
-        val = gum(i, j) * dt / (2.0d0 * dlonr * cos(latitudes(j)))
+        val = gum(i, j) * deltat / (2.0d0 * dlonr * cos(latitudes(j)))
         row = int(x1 + (y1 - 1) * nlon)
         irow(id) = row
         icol(id) = col
         a(id) = val
         id = id + 1
 
-        val = -gum(i, j) * dt / (2.0d0 * dlonr * cos(latitudes(j)))
+        val = -gum(i, j) * deltat / (2.0d0 * dlonr * cos(latitudes(j)))
         row = int(x2 + (y2 - 1) * nlon)
         irow(id) = row
         icol(id) = col
@@ -245,14 +241,14 @@ contains
         else
           dlat = latitudes(j + 1) - latitudes(j - 1)
         endif
-        val = gvm(i, j) * dt / (2.0d0 * dlat)
+        val = gvm(i, j) * deltat / (2.0d0 * dlat)
         row = int(x3 + (y3 - 1) * nlon)
         irow(id) = row
         icol(id) = col
         a(id) = val
         id = id + 1
 
-        val = -gvm(i, j) * dt / (2.0d0 * dlat)
+        val = -gvm(i, j) * deltat / (2.0d0 * dlat)
         row = int(x4 + (y4 - 1) * nlon)
         irow(id) = row
         icol(id) = col
@@ -273,7 +269,7 @@ contains
 
   ! 時刻t+Δtに格子点にある粒子が、時刻t-Δtにいる場所をdeplon, deplatに格納する
   ! また、最近接格子点をp, qに格納する
-  subroutine find_nearest_grid(t, dt, p_, q_)
+  subroutine find_nearest_grid(t, p_, q_)
     use math_module, only: math_pi, pi2=>math_pi2
     use sphere_module, only: xyz2uv, lonlat2xyz
     use grid_module, only: pole_regrid
@@ -284,7 +280,7 @@ contains
 
     integer(8) :: i, j
     real(8) :: dlonr
-    real(8), intent(in) :: t, dt
+    real(8), intent(in) :: t
     integer(8), intent(out) :: p_(nlon, nlat), q_(nlon, nlat)
 
     select case(velocity)
@@ -296,7 +292,7 @@ contains
 
     call interpolate_setuv(gu, gv)
 
-    call find_points(gu, gv, 0.5d0*dt, midlon, midlat, deplon, deplat)   ! dtに0.5をかけているのは引数のdtが最初のステップ以外は2.0*deltatを渡しているから
+    call find_points(gu, gv, 0.5d0*deltat, midlon, midlat, deplon, deplat)   ! dtに0.5をかけているのは引数のdtが最初のステップ以外は2.0*deltatを渡しているから
 
     dlonr = 0.5d0 * nlon / math_pi
     do j = 1, nlat
@@ -315,7 +311,7 @@ contains
   end subroutine find_nearest_grid
 
   ! 時刻tにおける残差速度をgum, gvmに格納する
-  subroutine calculate_resudual_velocity(dt, p_, q_, gum_, gvm_, sig)
+  subroutine calculate_resudual_velocity(p_, q_, gum_, gvm_, sig)
     use grid_module, only: latitudes => lat, longitudes => lon
     use math_module, only: math_pi, pi2=>math_pi2
     use sphere_module, only: xyz2uv, lonlat2xyz
@@ -323,7 +319,6 @@ contains
     use uv_module, only: uv_nodiv, uv_div
 
     implicit none
-    real(8), intent(in) :: dt
     integer(8) :: i, j
     real(8) :: lon_grid, lat_grid
     real(8) :: xg, yg, zg, xr, yr, zr, xm, ym, zm, xdot, ydot, zdot, u, v, b
@@ -346,9 +341,9 @@ contains
         midlon(i, j) = modulo(atan2(ym, xm) + pi2, pi2)
         midlat(i, j) = asin(zm)
 
-        xdot = (xg - xr) / dt
-        ydot = (yg - yr) / dt
-        zdot = (zg - zr) / dt
+        xdot = (xg - xr) / deltat
+        ydot = (yg - yr) / deltat
+        zdot = (zg - zr) / deltat
         if (sig) then
           call xyz2uv(xdot, ydot, zdot, deplon(i, j), deplat(i, j), u, v)  !Richie1987式(49)
         else
