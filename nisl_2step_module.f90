@@ -9,7 +9,7 @@ module nisl_2step_module
   real(8), dimension(:,:), allocatable, private :: &
     gphi_old, dgphi, dgphim, gphim, gphix, gphiy, gphixy, &
     midlon, midlat, deplon, deplat, gum, gvm
-  complex(8), dimension(:,:), allocatable, private :: sphi1
+    complex(8), dimension(:,:), allocatable, private :: sphi1
 
   private :: update
   public :: nisl_2step_init, nisl_2step_timeint, nisl_2step_clean
@@ -23,7 +23,7 @@ contains
 
     integer(8) :: i,j
 
-    allocate(sphi1(0:ntrunc, 0:ntrunc),gphi_old(nlon, nlat))
+    allocate(sphi1(0:ntrunc, 0:ntrunc), gphi_old(nlon, nlat))
     allocate(gphim(nlon, nlat),dgphi(nlon, nlat),dgphim(nlon, nlat))
     allocate(midlon(nlon, nlat), midlat(nlon, nlat))
     allocate(deplon(nlon, nlat), deplat(nlon, nlat), p(nlon, nlat), q(nlon, nlat))
@@ -54,7 +54,7 @@ contains
     use interpolate_module, only: interpolate_clean
     implicit none
 
-    deallocate(sphi1,gphi_old,gphim,dgphi,dgphim,gum,gvm, &
+    deallocate(sphi1, gphi_old,gphim,dgphi,dgphim,gum,gvm, &
       midlon,midlat,deplon,deplat,p,q)
     call interpolate_clean()
 
@@ -128,24 +128,54 @@ contains
       end do
     end do
 
-    gphix(1,:) = (gphi_old(2,:) - gphi_old(nlon,:)) / (longitudes(3) - longitudes(1))
-    gphix(nlon,:) = (gphi_old(1,:) - gphi_old(nlon-1,:)) / (longitudes(3) - longitudes(1))
-    do i=2, nlon-1
-      gphix(i,:) = (gphi_old(i+1,:) - gphi_old(i-1,:)) / (longitudes(3) - longitudes(1))
-    end do
+    !gphix(1,:) = (gphi_old(2,:) - gphi_old(nlon,:)) / (longitudes(3) - longitudes(1))
+    !gphix(nlon,:) = (gphi_old(1,:) - gphi_old(nlon-1,:)) / (longitudes(3) - longitudes(1))
+    !do i=2, nlon-1
+    !  gphix(i,:) = (gphi_old(i+1,:) - gphi_old(i-1,:)) / (longitudes(3) - longitudes(1))
+    !end do
     ! d/dphi
-    eps = pih-latitudes(1)
-    gphitmp = cshift(gphi_old(:,1),nlon/2)
-    gphiy(:,1) = (gphitmp-gphi_old(:,2))/(pih+eps-latitudes(2))
-    gphitmp = cshift(gphi_old(:,nlat),nlon/2)
-    gphiy(:,nlat) = (gphitmp-gphi_old(:,nlat-1))/(-pih-eps-latitudes(nlat-1))
-    do j=2, nlat-1
-      gphiy(:,j) = (gphi_old(:,j+1)-gphi_old(:,j-1))/(latitudes(j+1)-latitudes(j-1))
-    end do
+    !eps = pih-latitudes(1)
+    !gphitmp = cshift(gphi_old(:,1),nlon/2)
+    !gphiy(:,1) = (gphitmp-gphi_old(:,2))/(pih+eps-latitudes(2))
+    !gphitmp = cshift(gphi_old(:,nlat),nlon/2)
+    !gphiy(:,nlat) = (gphitmp-gphi_old(:,nlat-1))/(-pih-eps-latitudes(nlat-1))
+    !do j=2, nlat-1
+    !  gphiy(:,j) = (gphi_old(:,j+1)-gphi_old(:,j-1))/(latitudes(j+1)-latitudes(j-1))
+    !end do
+
+    !do i = 1, nlon
+    !  do j = 1, nlat
+    !    gphim(i, j) = gum(i, j) * gphix(i, j) / cos(deplat(i, j)) +  gvm(i, j) * gphiy(i, j)
+    !    gphi(i, j) = gphi(i, j) + deltat * gphim(i, j) * 0.5d0
+    !  end do
+    !end do
+
+        ! dF/dlon
+    call legendre_synthesis_dlon(sphi_old, dgphi)
+    call bicubic_interpolation_set(dgphi)
+    call interpolate_set(dgphi)
+    call interpolate_setd(gphix, gphiy, gphixy)
+    do j = 1, nlat
+      do i = 1, nlon
+        call interpolate_bicubic(longitudes(p(i, j)), latitudes(q(i, j)), dgphim(i, j))
+      enddo
+      gphim(:, j) = gum(:, j) * dgphim(:,j) / cos(latitudes(j)) ! gum: -u'
+    enddo
+
+    ! cos(lat)dF/dlat
+    call legendre_synthesis_dlat(sphi_old, dgphi) 
+    call bicubic_interpolation_set(dgphi)
+    call interpolate_set(dgphi)
+    call interpolate_setd(gphix, gphiy, gphixy)
+    do j = 1, nlat
+      do i = 1, nlon
+        call interpolate_bicubic(longitudes(p(i, j)), latitudes(q(i, j)), dgphim(i, j))
+      enddo
+      gphim(:, j) = gphim(:, j) + gvm(:, j) * dgphim(:,j) / cos(latitudes(j)) * 0.5d0 ! gvm: -v'
+    enddo
 
     do i = 1, nlon
       do j = 1, nlat
-        gphim(i, j) = gum(i, j) * gphix(i, j) / cos(deplat(i, j)) +  gvm(i, j) * gphiy(i, j)
         gphi(i, j) = gphi(i, j) + deltat * gphim(i, j)
       end do
     end do
@@ -167,10 +197,9 @@ contains
       gphi(i, j) = x(m)
     end do
 
-    call legendre_analysis(gphi, sphi1)
+    call legendre_analysis(gphi, sphi)
     do m = 0, ntrunc
       sphi_old(m : ntrunc, m) = sphi(m : ntrunc, m)
-      sphi(m : ntrunc, m) = sphi1(m : ntrunc, m)
     enddo
 
   end subroutine update
@@ -277,8 +306,6 @@ contains
       call uv_nodiv(t,longitudes,latitudes,gu,gv)
     case("div")
       call uv_div(t,longitudes,latitudes,gu,gv)
-    case default
-      print *, "No matching model for", velocity
     end select
     call interpolate_setuv(gu, gv)
 
@@ -312,6 +339,24 @@ contains
     enddo
 
   end subroutine calculate_residual_velocity
+
+  subroutine bicubic_interpolation_set(f)
+    use legendre_transform_module, only: legendre_analysis, legendre_synthesis_dlat, legendre_synthesis_dlon, &
+      legendre_synthesis_dlonlat
+    implicit none
+    integer(8) :: j
+    real(8), intent(in) :: f(nlon, nlat)
+
+    call legendre_analysis(f, sphi1)
+    call legendre_synthesis_dlon(sphi1, gphix)
+    call legendre_synthesis_dlat(sphi1, gphiy)
+    call legendre_synthesis_dlonlat(sphi1, gphixy)
+    do j = 1, nlat
+      gphiy(:,j) = gphiy(:,j) / cos(latitudes(j))
+      gphixy(:,j) = gphixy(:,j) / cos(latitudes(j))
+    end do
+
+  end subroutine bicubic_interpolation_set
 
   subroutine find_nearest_grid
     use math_module, only: math_pi, pi2=>math_pi2

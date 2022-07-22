@@ -146,7 +146,7 @@ contains
 
     ! dF/dlon
     call legendre_synthesis_dlon(sphi, dgphi)
-    call bicubic_interpolation_set(dgphi) 
+    call bicubic_interpolation_set(dgphi)
     call interpolate_set(dgphi)
     call interpolate_setd(gphix, gphiy, gphixy)
     do j = 1, nlat
@@ -167,6 +167,14 @@ contains
       enddo
       gphim(:, j) = gphim(:, j) + gvm(:, j) * dgphim(:,j) / cos(latitudes(j)) ! gvm: -v'
     enddo
+
+    open(12, file="res_wind.txt")
+    do i = 1, nlon
+      do j = 1, nlat
+        write(12,*) gum(i, j), gvm(i, j)
+      end do
+    end do
+    close(12)
 
     gphi = gphi + dt * gphim
 
