@@ -109,8 +109,6 @@ contains
     real(8), intent(in) :: dt
     real(8) :: b(nlon * nlat), x(nlon * nlat)
 
-    call interpolate_setuv(gu, gv)
-
     call find_points(gu, gv, 0.5d0*dt, midlon, midlat, deplon, deplat)   ! dtに0.5をかけているのは引数のdtが最初のステップ以外は2.0*deltatを渡しているから
     call set_niuv(dt)
 
@@ -202,14 +200,14 @@ contains
         call pole_regrid(x3, y3)
         call pole_regrid(x4, y4)
 
-        val = gum(i, j) * dt / (2.0d0 * dlonr * cos(latitudes(j)))
+        val = -gum(i, j) * dt / (2.0d0 * dlonr * cos(latitudes(j)))
         col = int(x1 + (y1 - 1) * nlon)
         irow(id) = row
         icol(id) = col
         a(id) = val
         id = id + 1
 
-        val = -gum(i, j) * dt / (2.0d0 * dlonr * cos(latitudes(j)))
+        val = gum(i, j) * dt / (2.0d0 * dlonr * cos(latitudes(j)))
         col = int(x2 + (y2 - 1) * nlon)
         irow(id) = row
         icol(id) = col
@@ -224,14 +222,14 @@ contains
         else
           dlat = latitudes(j + 1) - latitudes(j - 1)
         endif
-        val = gvm(i, j) * dt / (2.0d0 * dlat)
+        val = -gvm(i, j) * dt / (2.0d0 * dlat)
         col = int(x3 + (y3 - 1) * nlon)
         irow(id) = row
         icol(id) = col
         a(id) = val
         id = id + 1
 
-        val = -gvm(i, j) * dt / (2.0d0 * dlat)
+        val = gvm(i, j) * dt / (2.0d0 * dlat)
         col = int(x4 + (y4 - 1) * nlon)
         irow(id) = row
         icol(id) = col
@@ -263,8 +261,6 @@ contains
     real(8) :: dlonr
 
     dlonr = 0.5d0 * nlon / math_pi
-    gum(:, :) = 0.0d0
-    gvm(:, :) = 0.0d0
     do j = 1, nlat
       do i = 1, nlon
         ! find grid points near departure points
@@ -314,8 +310,8 @@ contains
     ydot = (yg - yr) / dt
     zdot = (zg - zr) / dt
     call xyz2uv(xdot, ydot, zdot, midlon1, midlat1, u, v)  !Richie1987式(49)
-    gum1 = gum1 + u
-    gvm1 = gvm1 + v
+    gum1 = u
+    gvm1 = v
 
     call interpolate_bilinearuv(midlon1, midlat1, u, v)
     gum1 = gum1 - u
